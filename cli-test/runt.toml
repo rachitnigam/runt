@@ -1,0 +1,21 @@
+# Name of the test suite (required)
+name = "Runt Tests"
+
+# Configuration for each test suite.
+[[tests]]
+# Optional name for this test suite.
+name = "Cat tests"
+# Test paths can be globs or exact.
+paths = [ "./cat-test/*.txt" ]
+# Command to run on each test file. {} is replaced with input name.
+cmd = "cat {}"
+
+[[tests]]
+name = "Ls test"
+paths = [ "ls-test/input.txt" ]
+cmd = "cat {} | ls"
+
+[[tests]]
+name = "Error test"
+paths = ["error-test/input.txt"]
+cmd = "ls foobar"

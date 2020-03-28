@@ -1,0 +1,17 @@
+[package]
+name = "runt"
+version = "0.1.0"
+authors = ["Rachit Nigam <rachit.nigam12@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "0.3"
+difference = "2.0"
+tokio = { version = "0.2", features = ["rt-threaded", "process", "macros"] }
+futures = "0.3.4"
+colored = "1.9.3"
+toml = "0.5.6"
+serde = { version = "1.0.105", features = ["derive"] }
+glob = "0.3.0"
