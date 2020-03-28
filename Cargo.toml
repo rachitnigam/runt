@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 structopt = "0.3"
 difference = "2.0"
-tokio = { version = "0.2", features = ["rt-threaded", "process", "macros"] }
+tokio = { version = "0.2", features = ["rt-threaded", "process", "macros", "fs"] }
 futures = "0.3.4"
 colored = "1.9.3"
 toml = "0.5.6"

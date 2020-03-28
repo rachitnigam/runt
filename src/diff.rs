@@ -1,8 +1,8 @@
 use difference;
 use difference::{Changeset, Difference};
 use std::fmt;
-use std::io::Write;
 use colored::Colorize;
+use crate::errors::RuntError;
 
 /// Track the mode of difference printing.
 #[derive(PartialEq, Debug)]
@@ -92,7 +92,7 @@ fn diff_with_lineno(changes: &Changeset) -> Vec<PrintInfo> {
 pub fn gen_diff<'a>(
     org: &str,
     new: &str
-) -> Result<String, std::io::Error> {
+) -> String {
     use colored::*;
     // Generate a changeset for the strings and get line number information.
 
@@ -132,5 +132,5 @@ pub fn gen_diff<'a>(
         }
     }
 
-    Ok(str_buf.trim_end().to_string())
+    str_buf.trim_end().to_string()
 }

@@ -544,6 +544,7 @@ dependencies = [
  "bytes",
  "lazy_static",
  "libc",
+ "memchr",
  "mio",
  "mio-named-pipes",
  "mio-uds",

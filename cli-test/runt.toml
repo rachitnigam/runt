@@ -6,7 +6,7 @@ name = "Runt Tests"
 # Optional name for this test suite.
 name = "Cat tests"
 # Test paths can be globs or exact.
-paths = [ "./cat-test/*.txt" ]
+paths = [ "cat-test/*.txt" ]
 # Command to run on each test file. {} is replaced with input name.
 cmd = "cat {}"
 

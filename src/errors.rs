@@ -23,6 +23,12 @@ impl From<string::FromUtf8Error> for RuntError {
     }
 }
 
+impl From<std::io::Error> for RuntError {
+    fn from(err: std::io::Error) -> Self {
+        RuntError(err.to_string())
+    }
+}
+
 // Helper method to collapse nested Results
 pub trait RichResult<T, E> {
     fn collapse(self) -> Result<T, E>;

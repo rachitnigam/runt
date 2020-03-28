@@ -1,64 +1,18 @@
 mod diff;
 mod errors;
+mod test_results;
+mod cli;
 
 use futures::future;
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
-use structopt::StructOpt;
+use test_results::{TestResult, TestState};
 use tokio::process::Command;
+use cli::Opts;
+use structopt::StructOpt;
 
 use errors::RuntError;
-
-#[derive(StructOpt, Debug)]
-#[structopt(name = "runt", about = "Lightweight snapshot testing.")]
-struct Opts {
-    /// Files to process.
-    #[structopt(name = "TEST_DIR", parse(from_os_str))]
-    dir: PathBuf,
-
-    /// Show diffs for each failing test.
-    #[structopt(short, long)]
-    diff: bool,
-
-    /// Update expect files for each test (opens a dialog).
-    #[structopt(short, long)]
-    save: bool,
-}
-
-/// Store information related to one test.
-#[derive(Debug)]
-struct TestResult {
-    /// Return status of the test.
-    status: i32,
-
-    /// STDOUT captured from the test.
-    stdout: String,
-
-    /// STRERR captured from the test.
-    stderr: String,
-}
-
-impl TestResult {
-    /// Format the output of the test into an expect string.
-    /// An expect string is of the form:
-    /// ---CODE---
-    /// <exit code>
-    /// ---STDOUT---
-    /// <contents of STDOUT>
-    /// ---STDERR---
-    /// <contents of STDERR>
-    fn to_expect_string(&self) -> String {
-        let mut buf = String::new();
-        buf.push_str("---CODE---");
-        buf.push_str(format!("{}", self.status).as_str());
-        buf.push_str("---STDOUT---");
-        buf.push_str(self.stdout.as_str());
-        buf.push_str("---STDERR---");
-        buf.push_str(self.stderr.as_str());
-        buf.to_string()
-    }
-}
 
 /// Configuration for a single runt run.
 #[derive(Debug, Deserialize)]
@@ -88,7 +42,6 @@ fn collect_globs<'a>(patterns: &Vec<String>) -> (Vec<PathBuf>, Vec<RuntError>) {
     let mut errors: Vec<RuntError> = Vec::new();
     for pattern in patterns {
         let glob_res = glob::glob(&pattern);
-        println!("{:#?}", pattern);
         // The glob can either succeed for fail.
         match glob_res {
             // If the glob pattern succeeded, collect errors and matching paths.
@@ -128,39 +81,100 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
     cmd
 }
 
+fn print_test_suite_results(
+    name: &str,
+    num_tests: usize,
+    resolved: Vec<Result<TestResult, RuntError>>,
+) {
+    use colored::*;
+    // Summarize all the results
+    let (results, errors): (Vec<_>, Vec<_>) =
+        resolved.into_iter().partition(|el| el.is_ok());
+
+    println!("{} ({} tests)", name.bold(), num_tests);
+    results
+        .into_iter()
+        .map(Result::unwrap)
+        .for_each(|info| println!("  {}", info.report_str(false)));
+
+    // Report internal errors if any happened while executing this suite.
+    let err_rep: Vec<RuntError> = errors
+        .into_iter()
+        .map(Result::unwrap_err)
+        .collect();
+    if !err_rep.is_empty() {
+        println!("  {}", "runt errors".red());
+        err_rep.into_iter()
+            .for_each(|info| println!("    {}", info.to_string().red()))
+    }
+    ()
+}
+
 #[tokio::main]
 async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
     use errors::RichResult;
-    // For each test suite, extract the glob patterns and run the tests.
     for suite in conf.tests {
         let rel_pats = suite
             .paths
             .iter()
-            .map(|pattern| opts.dir.to_str().unwrap().to_owned() + "/" + pattern)
-            .collect();
-        // Run pattern on the relative path.
-        let (paths, errors) = collect_globs(&rel_pats);
-        let handles = paths
-            .iter()
-            .map(|path| {
-                let mut cmd = construct_command(&suite.cmd, path);
-                tokio::spawn(async move {
-                    cmd.output()
-                        .await
-                        .map::<Result<TestResult, RuntError>, _>(|out| {
-                            Ok(TestResult {
-                                status: out.status.code().unwrap_or(-1),
-                                stdout: String::from_utf8(out.stdout)?,
-                                stderr: String::from_utf8(out.stderr)?,
-                            })
-                        })
-                        .map_err(|err| RuntError(err.to_string()))
-                })
+            .map(|pattern| {
+                opts.dir.to_str().unwrap().to_owned() + "/" + pattern
             })
-            .collect::<Vec<_>>();
+            .collect();
+
+        // Run pattern on the relative path.
+        let (paths, glob_errors) = collect_globs(&rel_pats);
+        let num_tests = paths.len();
+        let mut handles = Vec::with_capacity(num_tests);
+        // For each test suite, extract the glob patterns and run the tests.
+        // XXX(rachit): Slower test suites will block other tests from running.
+        for path in paths {
+            let mut cmd = construct_command(&suite.cmd, &path);
+            let handle: tokio::task::JoinHandle<Result<_, RuntError>> =
+                tokio::spawn(async move {
+                    let out = cmd.output().await?;
+                    let status = out.status.code().unwrap_or(-1);
+                    let stdout = String::from_utf8(out.stdout)?;
+                    let stderr = String::from_utf8(out.stderr)?;
+
+                    // Generate expected string
+                    let expect_string = test_results::to_expect_string(
+                        &status, &stdout, &stderr,
+                    );
+                    // Open expect file for comparison.
+                    let expect_path = path.as_path().with_extension("expect");
+                    let state = tokio::fs::read_to_string(expect_path)
+                        .await
+                        .map(|contents| {
+                            if contents == expect_string {
+                                TestState::Correct
+                            } else {
+                                TestState::Diff(diff::gen_diff(
+                                    &contents,
+                                    &expect_string,
+                                ))
+                            }
+                        })
+                        .unwrap_or(TestState::Missing);
+
+                    return Ok(TestResult {
+                        path,
+                        status,
+                        stdout,
+                        stderr,
+                        state: state,
+                    });
+                });
+            handles.push(handle);
+        }
+
+        let glob_errors_to_chain = glob_errors
+            .into_iter()
+            .map(Err)
+            .collect::<Vec<Result<TestResult, RuntError>>>();
 
         // Run all the tests in this suite and collect and errors.
-        let results: Vec<Result<TestResult, RuntError>> =
+        let resolved: Vec<Result<TestResult, RuntError>> =
             future::join_all(handles)
                 .await
                 .into_iter()
@@ -169,11 +183,11 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                         .map_err(|err| RuntError(err.to_string()))
                         // Collapse multiple levels of Results into one.
                         .collapse()
-                        .collapse()
                 })
+                .chain(glob_errors_to_chain)
                 .collect();
 
-        println!("{:#?}", results);
+        print_test_suite_results(&suite.name, num_tests, resolved);
     }
     Ok(())
 }
@@ -183,7 +197,7 @@ fn run() -> Result<(), RuntError> {
 
     // Error if runt.toml doesn't exist.
     let conf_path = opts.dir.join("runt.toml");
-    let contents = &fs::read_to_string(&conf_path).map_err(|err| {
+    let contents = &fs::read_to_string(&conf_path).map_err(|_| {
         RuntError(format!(
             "{} is missing. Runt expects a directory with a runt.toml file.",
             conf_path.to_str().unwrap()
@@ -204,5 +218,8 @@ fn run() -> Result<(), RuntError> {
 }
 
 fn main() {
-    run();
+    match run() {
+        Err(RuntError(msg)) => println!("error: {}", msg),
+        Ok(..) => ()
+    }
 }
