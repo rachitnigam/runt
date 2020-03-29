@@ -1,0 +1,5 @@
+---CODE---
+0
+---STDOUT---
+---STDERR---
+ls: foobar: No such file or directory

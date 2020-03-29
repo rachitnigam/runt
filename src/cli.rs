@@ -44,7 +44,7 @@ impl std::str::FromStr for OnlyOpt {
             "pass" => Ok(OnlyOpt::Pass),
             "miss" => Ok(OnlyOpt::Missing),
             _ => Err(errors::RuntError(
-                "Must be one of fail, pass, missing.".to_string(),
+                "Must be one of fail, pass, miss.".to_string(),
             )),
         }
     }
