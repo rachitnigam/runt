@@ -96,10 +96,10 @@ impl TestResult {
 
 /// Result of running a TestSuite.
 pub struct TestSuiteResult(
-    pub String,             // Name of the test suite.
-    pub i32,                // Number of matching paths.
-    pub Vec<TestResult>,    // TestResult for successfully executed tests.
-    pub Vec<RuntError>,     // Errors while running this suite.
+    pub String,          // Name of the test suite.
+    pub i32,             // Number of matching paths.
+    pub Vec<TestResult>, // TestResult for successfully executed tests.
+    pub Vec<RuntError>,  // Errors while running this suite.
 );
 
 impl TestSuiteResult {
@@ -121,10 +121,7 @@ impl TestSuiteResult {
     }
 
     /// Print the results of running this test suite.
-    pub fn print_test_suite_results(
-        &self,
-        opts: &cli::Opts,
-    ) -> &Self {
+    pub fn print_test_suite_results(&self, opts: &cli::Opts) -> &Self {
         use colored::*;
         let TestSuiteResult(name, num_tests, results, errors) = self;
 
@@ -164,15 +161,20 @@ impl TestSuiteResult {
 /// <contents of STDERR>
 pub fn to_expect_string(status: i32, stdout: &str, stderr: &str) -> String {
     let mut buf = String::new();
-    buf.push_str("---CODE---\n");
-    buf.push_str(format!("{}", status).as_str());
-    buf.push('\n');
+    if !stdout.is_empty() {
+        buf.push_str(stdout);
+    }
 
-    buf.push_str("---STDOUT---\n");
-    buf.push_str(stdout);
+    if status != 0 {
+        buf.push_str("---CODE---\n");
+        buf.push_str(format!("{}", status).as_str());
+        buf.push('\n');
+    }
 
-    buf.push_str("---STDERR---\n");
-    buf.push_str(stderr);
+    if !stderr.is_empty() {
+        buf.push_str("---STDERR---\n");
+        buf.push_str(stderr);
+    }
 
     buf
 }
