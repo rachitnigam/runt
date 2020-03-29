@@ -4,6 +4,8 @@ RUN Test (RUNT)
 Runt is a lightweight, parallel snapshot testing framework. It aims to enable
 snapshot testing with minimal configuration.
 
+![](static/runt.gif)
+
 Runt is most useful when you have the following test setup:
 - One command that needs to run on many input files.
 - Test suites grouped by commands run on the files.
