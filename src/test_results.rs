@@ -33,16 +33,20 @@ pub struct TestResult {
 
     /// Result of comparison
     pub state: TestState,
+
+    /// The results of this structure were saved.
+    pub saved: bool,
 }
 
 impl TestResult {
     /// Save the results of the test suite into the expect file.
-    pub fn save_results(&self) -> Result<(), RuntError> {
+    pub fn save_results(&mut self) -> Result<(), RuntError> {
         use std::fs;
         use TestState as TS;
         match &self.state {
             TS::Correct => Ok(()),
             TS::Missing(expect) | TS::Mismatch(expect, _) => {
+                self.saved = true;
                 Ok(fs::write(expect_file(&self.path), expect)?)
             }
         }
@@ -60,6 +64,9 @@ impl TestResult {
             TS::Missing(expect_string) => {
                 buf.push_str(&"⚬ miss - ".yellow().to_string());
                 buf.push_str(&path_str.yellow().to_string());
+                if self.saved {
+                    buf.push_str(&" (saved)".dimmed().to_string());
+                }
                 if show_diff {
                     buf.push_str("\n");
                     buf.push_str(&expect_string);
@@ -72,6 +79,9 @@ impl TestResult {
             TS::Mismatch(expect_string, contents) => {
                 buf.push_str(&"⚬ fail - ".red().to_string());
                 buf.push_str(&path_str.red().to_string());
+                if self.saved {
+                    buf.push_str(&" (saved)".dimmed().to_string());
+                }
                 if show_diff {
                     let diff = diff::gen_diff(&contents, &expect_string);
                     buf.push_str("\n");

@@ -133,6 +133,7 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                         stdout,
                         stderr,
                         state: state,
+                        saved: false,
                     });
                 });
             handles.push(handle);
