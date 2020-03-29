@@ -106,10 +106,10 @@ impl TestSuiteResult {
 
     /// Print the results of running this test suite.
     pub fn print_test_suite_results(
-        self: TestSuiteResult,
+        &self,
         opts: &cli::Opts,
         num_tests: usize,
-    ) {
+    ) -> &Self {
         use colored::*;
         let TestSuiteResult(name, results, errors) = self;
 
@@ -124,7 +124,19 @@ impl TestSuiteResult {
                 .into_iter()
                 .for_each(|info| println!("    {}", info.to_string().red()))
         }
-        ()
+        self
+    }
+
+    /// Save results from this TestSuite.
+    pub fn save_all(&mut self) -> &mut Self {
+        let TestSuiteResult(_, results, _) = self;
+        for result in results {
+            match result.save_results() {
+                Err(e) => self.2.push(e),
+                _ => ()
+            }
+        }
+        self
     }
 }
 

@@ -159,9 +159,13 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
 
         use errors::RichVec;
         let (results, errors) = resolved.partition_results();
-        TestSuiteResult(suite.name, results, errors)
-            .only_results(&opts.only)
-            .print_test_suite_results(&opts, num_tests);
+
+        let mut all_results = TestSuiteResult(suite.name, results, errors)
+            .only_results(&opts.only);
+        if opts.save {
+            all_results.save_all();
+        }
+        all_results.print_test_suite_results(&opts, num_tests);
     }
     Ok(())
 }
