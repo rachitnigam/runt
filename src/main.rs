@@ -95,7 +95,7 @@ fn print_test_suite_results(
     results
         .into_iter()
         .map(Result::unwrap)
-        .for_each(|info| println!("  {}", info.report_str(false)));
+        .for_each(|info| println!("  {}", info.report_str(true)));
 
     // Report internal errors if any happened while executing this suite.
     let err_rep: Vec<RuntError> = errors
@@ -149,10 +149,7 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                             if contents == expect_string {
                                 TestState::Correct
                             } else {
-                                TestState::Diff(diff::gen_diff(
-                                    &contents,
-                                    &expect_string,
-                                ))
+                                TestState::Mismatch(contents)
                             }
                         })
                         .unwrap_or(TestState::Missing);
@@ -212,9 +209,7 @@ fn run() -> Result<(), RuntError> {
         ))
     })?;
 
-    execute_all(conf, opts);
-
-    Ok(())
+    execute_all(conf, opts)
 }
 
 fn main() {

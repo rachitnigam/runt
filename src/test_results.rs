@@ -5,8 +5,8 @@ pub enum TestState {
     Missing,
     /// The comparison succeeded.
     Correct,
-    /// The comparison failed. Contains the formatted diff string.
-    Diff(String),
+    /// The comparison failed. Contains the contents of the expect string.
+    Mismatch(String),
 }
 
 /// Store information related to one test.
@@ -57,14 +57,36 @@ pub fn to_expect_string(
 
 impl TestResult {
     pub fn report_str(&self, show_diff: bool) -> String {
+        use crate::diff;
         use colored::*;
         use TestState as TS;
+
+        let mut buf = String::new();
         let path_str = self.path.to_str().unwrap();
-        let status = match &self.state {
-            TS::Missing => ("⚬ missing - ".to_owned() + path_str).yellow(),
-            TS::Diff(..) => ("⚬ failed - ".to_owned() + path_str).red(),
-            TS::Correct => ("⚬ ok - ".to_owned() + path_str).green(),
-        }.to_string();
-        status.to_string()
+        match &self.state {
+            TS::Missing => {
+                buf.push_str(&"⚬ miss - ".yellow().to_string());
+                buf.push_str(&path_str.yellow().to_string());
+            }
+            TS::Correct => {
+                buf.push_str(&"⚬ pass - ".green().to_string());
+                buf.push_str(&path_str.green().to_string());
+            }
+            TS::Mismatch(contents) => {
+                buf.push_str(&"⚬ fail - ".red().to_string());
+                buf.push_str(&path_str.red().to_string());
+                if show_diff {
+                    let updated = to_expect_string(
+                        &self.status,
+                        &self.stdout,
+                        &self.stderr,
+                    );
+                    let diff = diff::gen_diff(&contents, &updated);
+                    buf.push_str("\n");
+                    buf.push_str(&diff);
+                }
+            }
+        };
+        buf.to_string()
     }
 }

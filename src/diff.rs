@@ -1,11 +1,10 @@
+use colored::Colorize;
 use difference;
 use difference::{Changeset, Difference};
 use std::fmt;
-use colored::Colorize;
-use crate::errors::RuntError;
 
 /// Track the mode of difference printing.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 enum Mode {
     Same,
     Add,
@@ -13,7 +12,7 @@ enum Mode {
 }
 
 // ======== line number display ==========
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct Lineno(Option<usize>);
 
 impl fmt::Display for Lineno {
@@ -26,8 +25,20 @@ impl fmt::Display for Lineno {
 }
 // =======================================
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct PrintInfo<'a>(Mode, Lineno, Lineno, &'a str);
+
+impl PrintInfo<'_> {
+    fn to_diff(&self) -> String {
+        let PrintInfo(node, line_a, line_b, line) = self;
+        let (diff_sign, col_line) = match node {
+            Mode::Add => ("+".green(), line.green()),
+            Mode::Rem => ("-".red(), line.red()),
+            Mode::Same => (" ".normal(), line.dimmed()),
+        };
+        format!("{:>5} {:>3}│{} {}\n", line_a, line_b, diff_sign, col_line)
+    }
+}
 
 /// Given a changeset, generate a vector with a diff representation that tracks
 /// line numbers.
@@ -87,49 +98,77 @@ fn diff_with_lineno(changes: &Changeset) -> Vec<PrintInfo> {
         .collect()
 }
 
+/// Chunk up the diff so that unchanged lines are only showed in the context
+/// of another changed lines.
+fn get_chunks<'a>(print_info: &'a Vec<PrintInfo>) -> Vec<Vec<PrintInfo<'a>>> {
+    use Mode as M;
+    let mut printable: Vec<Vec<PrintInfo>> = Vec::new();
+
+    let ctx_size = 2;
+    let mut running = false;
+    let mut end_window = ctx_size;
+    let mut cur_slice: Vec<PrintInfo> = Vec::new();
+
+    for (idx, node) in print_info.iter().enumerate() {
+        // print!("{:>5} {} {:?} - ", running, end_window, node.0);
+        // If `running` is false and this is a `Same` node, skip it.
+        if !running && node.0 == M::Same {
+            // println!("{}", "skip");
+        }
+        // If this is not a `Same` node and `running` is false, add the
+        // last `ctx_size` nodes which are expected to the `Same` and
+        // set running to true.
+        else if !running && node.0 != M::Same {
+            // println!("{}", "b1");
+            running = true;
+            &print_info[idx.saturating_sub(ctx_size)..idx]
+                .iter()
+                .for_each(|el| cur_slice.push(el.clone()));
+            cur_slice.push(node.clone());
+        }
+        // If `running` is `true` and this node is not `Same`, add this
+        // node and set `end_window` = `ctx_size`.
+        else if running && node.0 != M::Same {
+            // println!("{}", "b2");
+            cur_slice.push(node.clone());
+            end_window = ctx_size;
+        }
+        // If `running` is `true` and this node is `Same` and
+        // `end_window` is not zero, decrement `end_window` and add
+        // this node.
+        else if running && node.0 == M::Same && end_window != 0 {
+            // println!("{}", "b3");
+            end_window -= 1;
+            cur_slice.push(node.clone());
+        }
+        // If `end_window` is zero, set `running` to `false`.
+        else if end_window == 0 {
+            // println!("{}", "b4");
+            running = false;
+            printable.push(cur_slice);
+            cur_slice = Vec::new();
+        }
+        else {
+            // println!("{}", "imp");
+        }
+    }
+    printable
+}
+
 /// Generate a rich string representation to show diffs with line number
 /// information.
-pub fn gen_diff<'a>(
-    org: &str,
-    new: &str
-) -> String {
-    use colored::*;
+pub fn gen_diff<'a>(org: &str, new: &str) -> String {
     // Generate a changeset for the strings and get line number information.
-
     let changes = &Changeset::new(org, new, "\n");
     let print_info = diff_with_lineno(changes);
-    let mut str_buf = String::new();
+    let print_chunks = get_chunks(&print_info);
 
-    for diff in print_info {
-        match diff {
-            PrintInfo(Mode::Add, line_a, line_b, line) => {
-                str_buf.push_str(format!(
-                    "{:>3} {:>3}│{}{}\n",
-                    line_a,
-                    line_b,
-                    "+".green(),
-                    line.green()
-                ).as_str())
-            }
-            PrintInfo(Mode::Rem, line_a, line_b, line) => {
-                str_buf.push_str(format!(
-                    "{:>3} {:>3}│{}{}\n",
-                    line_a,
-                    line_b,
-                    "-".red(),
-                    line.red()
-                ).as_str())
-            }
-            PrintInfo(Mode::Same, line_a, line_b, line) => {
-                str_buf.push_str(format!(
-                    "{:>3} {:>3}│{}{}\n",
-                    line_a,
-                    line_b,
-                    " ",
-                    line.dimmed()
-                ).as_str())
-            }
+    let mut str_buf = String::new();
+    for chunk in print_chunks {
+        for info in chunk {
+            str_buf.push_str(&info.to_diff());
         }
+        str_buf.push_str(format!("{:>9}~\n", " ").as_str());
     }
 
     str_buf.trim_end().to_string()
