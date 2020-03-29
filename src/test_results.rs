@@ -1,4 +1,5 @@
-use crate::errors;
+use crate::cli;
+use crate::errors::RuntError;
 
 /// Track the state of TestResult.
 #[derive(Debug, PartialEq)]
@@ -31,10 +32,7 @@ pub struct TestResult {
 }
 
 /// Result of running a TestSuite.
-pub struct TestSuiteResult(
-    pub String,
-    pub Vec<Result<TestResult, errors::RuntError>>,
-);
+pub struct TestSuiteResult(pub String, pub Vec<Result<TestResult, RuntError>>);
 
 /// Format the output of the test into an expect string.
 /// An expect string is of the form:
@@ -106,5 +104,55 @@ impl TestResult {
             }
         };
         buf.to_string()
+    }
+}
+
+impl TestSuiteResult {
+    pub fn only_results(mut self, only: &Option<cli::OnlyOpt>) -> Self {
+        use cli::OnlyOpt as O;
+        use TestState as TS;
+        self.1.retain(|el| {
+            if let (Some(only), Ok(TestResult { state, .. })) = (only, el) {
+                return match (only, state) {
+                    (O::Fail, TS::Mismatch(..)) => true,
+                    (O::Pass, TS::Correct) => true,
+                    (O::Missing, TS::Missing) => true,
+                    _ => false
+                }
+            }
+            true
+        });
+        self
+    }
+
+    /// Print the results of running this test suite.
+    pub fn print_test_suite_results(
+        self: TestSuiteResult,
+        opts: &cli::Opts,
+        num_tests: usize,
+    ) {
+        use colored::*;
+        let TestSuiteResult(name, resolved) = self;
+
+        // Summarize all the results
+        let (results, errors): (Vec<_>, Vec<_>) =
+            resolved.into_iter().partition(|el| el.is_ok());
+
+        println!("{} ({} tests)", name.bold(), num_tests);
+        results
+            .into_iter()
+            .map(Result::unwrap)
+            .for_each(|info| println!("  {}", info.report_str(opts.diff)));
+
+        // Report internal errors if any happened while executing this suite.
+        let err_rep: Vec<RuntError> =
+            errors.into_iter().map(Result::unwrap_err).collect();
+        if !err_rep.is_empty() {
+            println!("  {}", "runt errors".red());
+            err_rep
+                .into_iter()
+                .for_each(|info| println!("    {}", info.to_string().red()))
+        }
+        ()
     }
 }

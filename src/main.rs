@@ -81,36 +81,6 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
     cmd
 }
 
-fn print_test_suite_results(
-    opts: &Opts,
-    num_tests: usize,
-    ts_results: TestSuiteResult,
-) {
-    use colored::*;
-    let TestSuiteResult(name, resolved) = ts_results;
-
-    // Summarize all the results
-    let (results, errors): (Vec<_>, Vec<_>) =
-        resolved.into_iter().partition(|el| el.is_ok());
-
-    println!("{} ({} tests)", name.bold(), num_tests);
-    results
-        .into_iter()
-        .map(Result::unwrap)
-        .for_each(|info| println!("  {}", info.report_str(opts.diff)));
-
-    // Report internal errors if any happened while executing this suite.
-    let err_rep: Vec<RuntError> =
-        errors.into_iter().map(Result::unwrap_err).collect();
-    if !err_rep.is_empty() {
-        println!("  {}", "runt errors".red());
-        err_rep
-            .into_iter()
-            .for_each(|info| println!("    {}", info.to_string().red()))
-    }
-    ()
-}
-
 #[tokio::main]
 async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
     use errors::RichResult;
@@ -185,11 +155,9 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                 .chain(glob_errors_to_chain)
                 .collect();
 
-        print_test_suite_results(
-            &opts,
-            num_tests,
-            TestSuiteResult(suite.name, resolved),
-        );
+        TestSuiteResult(suite.name, resolved)
+            .only_results(&opts.only)
+            .print_test_suite_results(&opts, num_tests);
     }
     Ok(())
 }

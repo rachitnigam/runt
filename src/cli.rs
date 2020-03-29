@@ -42,7 +42,7 @@ impl std::str::FromStr for OnlyOpt {
         match s {
             "fail" => Ok(OnlyOpt::Fail),
             "pass" => Ok(OnlyOpt::Pass),
-            "Missing" => Ok(OnlyOpt::Missing),
+            "miss" => Ok(OnlyOpt::Missing),
             _ => Err(errors::RuntError(
                 "Must be one of fail, pass, missing.".to_string(),
             )),
