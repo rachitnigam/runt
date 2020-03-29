@@ -6,7 +6,6 @@ mod test_results;
 use cli::Opts;
 use futures::future;
 use serde::Deserialize;
-use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use test_results::{TestResult, TestState, TestSuiteResult};
@@ -113,17 +112,20 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                         &status, &stdout, &stderr,
                     );
                     // Open expect file for comparison.
-                    let expect_path = path.as_path().with_extension("expect");
+                    let expect_path = test_results::expect_file(&path);
                     let state = tokio::fs::read_to_string(expect_path)
                         .await
                         .map(|contents| {
                             if contents == expect_string {
                                 TestState::Correct
                             } else {
-                                TestState::Mismatch(contents)
+                                TestState::Mismatch(
+                                    expect_string.clone(),
+                                    contents,
+                                )
                             }
                         })
-                        .unwrap_or(TestState::Missing);
+                        .unwrap_or(TestState::Missing(expect_string));
 
                     return Ok(TestResult {
                         path,
@@ -155,7 +157,9 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                 .chain(glob_errors_to_chain)
                 .collect();
 
-        TestSuiteResult(suite.name, resolved)
+        use errors::RichVec;
+        let (results, errors) = resolved.partition_results();
+        TestSuiteResult(suite.name, results, errors)
             .only_results(&opts.only)
             .print_test_suite_results(&opts, num_tests);
     }
@@ -167,7 +171,7 @@ fn run() -> Result<(), RuntError> {
 
     // Error if runt.toml doesn't exist.
     let conf_path = opts.dir.join("runt.toml");
-    let contents = &fs::read_to_string(&conf_path).map_err(|_| {
+    let contents = &std::fs::read_to_string(&conf_path).map_err(|_| {
         RuntError(format!(
             "{} is missing. Runt expects a directory with a runt.toml file.",
             conf_path.to_str().unwrap()

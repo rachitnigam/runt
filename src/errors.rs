@@ -43,3 +43,21 @@ impl<T, E> RichResult<T, E> for Result<Result<T, E>, E> {
         }
     }
 }
+
+pub trait RichVec<T, E> {
+    fn partition_results(self) -> (Vec<T>, Vec<E>);
+}
+impl<T, E> RichVec<T, E> for Vec<Result<T, E>>
+where
+    T: std::fmt::Debug,
+    E: std::fmt::Debug,
+{
+    fn partition_results(self) -> (Vec<T>, Vec<E>) {
+        let (ts, es): (Vec<_>, Vec<_>) =
+            self.into_iter().partition(|el| el.is_ok());
+        (
+            ts.into_iter().map(Result::unwrap).collect::<Vec<T>>(),
+            es.into_iter().map(Result::unwrap_err).collect::<Vec<E>>(),
+        )
+    }
+}
