@@ -153,10 +153,9 @@ impl TestSuiteResult {
 
 /// Format the output of the test into an expect string.
 /// An expect string is of the form:
+/// <contents of STDOUT>
 /// ---CODE---
 /// <exit code>
-/// ---STDOUT---
-/// <contents of STDOUT>
 /// ---STDERR---
 /// <contents of STDERR>
 pub fn to_expect_string(status: i32, stdout: &str, stderr: &str) -> String {

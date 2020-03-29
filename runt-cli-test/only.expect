@@ -6,25 +6,17 @@ Runt Tests
 Cat tests (2 tests)
   ⚬ miss - cat-test/a.txt
          ~
-        1│+ ---CODE---
-        2│+ 0
-        3│+ ---STDOUT---
-        4│+ 1 2 3
-        5│+ ---STDERR---
-        6│+ 
+        1│+ 1 2 3
+        2│+ 
          ~
 Ls test (1 tests)
   ⚬ miss - ls-test/input.txt
          ~
-        1│+ ---CODE---
-        2│+ 0
-        3│+ ---STDOUT---
-        4│+ cat-test
-        5│+ error-test
-        6│+ ls-test
-        7│+ runt.toml
-        8│+ ---STDERR---
-        9│+ 
+        1│+ cat-test
+        2│+ error-test
+        3│+ ls-test
+        4│+ runt.toml
+        5│+ 
          ~
 Error test (1 tests)
 

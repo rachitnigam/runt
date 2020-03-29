@@ -1,6 +1,19 @@
 Runt Changelog
 ==============
 
+0.1.3
+-----
+
+- Change the expect string format to be:
+  ```
+  <STDOUT>
+  ---CODE---
+  <exit code>
+  ---STDERR---
+  <stderr>
+  ```
+  and suppress stderr when its empty and code when its zero.
+
 0.1.2
 -----
 - Execute all commands in the directory where `runt.toml` resides.
