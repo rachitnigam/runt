@@ -1,0 +1,16 @@
+name = "Test Runt Output"
+
+[[tests]]
+name = "default output"
+paths = [ "default" ]
+cmd = "../target/debug/runt ../cli-test"
+
+[[tests]]
+name = "diff output"
+paths = [ "diff" ]
+cmd = "../target/debug/runt ../cli-test -d"
+
+[[tests]]
+name = "only output"
+paths = [ "only" ]
+cmd = "../target/debug/runt ../cli-test --only miss -d"

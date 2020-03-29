@@ -25,12 +25,6 @@ Runt is not useful when you want to do:
 Snapshot testing with runt is extremely flexible. For example, the tests
 under `runt-cli-test` test the outputs of the runt CLI.
 
-### Building
-
-- Install [Rust][].
-- Run `cargo build --release`. The `runt` executable is generated
-  under `target/release/runt`.
-
 #### Workflow
 
 **Showing diffs**: By default, runt does not show diffs between the new output
@@ -41,6 +35,13 @@ updated outputs.
 
 **Suppress specific outputs**: The `--only` flag can be used to focus on only
 failing, missing, or correct tests. It composes with the diff and save flags.
+
+### Building & Developing
+
+- Install [Rust][].
+- Run `cargo build --release`. The `runt` executable is generated
+  under `target/release/runt`.
+- Runt is tested using `runt`. Run `runt runt-cli-test` to test runt.
 
 ### Example
 
