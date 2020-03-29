@@ -1,4 +1,4 @@
-use std::{fmt, string, error};
+use std::{error, fmt, string};
 
 /// An error from Runt.
 pub struct RuntError(pub String);
@@ -43,4 +43,3 @@ impl<T, E> RichResult<T, E> for Result<Result<T, E>, E> {
         }
     }
 }
-

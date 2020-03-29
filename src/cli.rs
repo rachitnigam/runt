@@ -6,7 +6,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "runt", about = "Lightweight snapshot testing.")]
 pub struct Opts {
-    /// Files to process.
+    /// Test folder.
     #[structopt(name = "TEST_DIR", parse(from_os_str))]
     pub dir: PathBuf,
 
@@ -43,9 +43,9 @@ impl std::str::FromStr for OnlyOpt {
             "fail" => Ok(OnlyOpt::Fail),
             "pass" => Ok(OnlyOpt::Pass),
             "Missing" => Ok(OnlyOpt::Missing),
-            _ => Err(
-                errors::RuntError(
-                    "Must be one of fail, pass, missing.".to_string()))
+            _ => Err(errors::RuntError(
+                "Must be one of fail, pass, missing.".to_string(),
+            )),
         }
     }
 }

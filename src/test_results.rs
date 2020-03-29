@@ -1,3 +1,5 @@
+use crate::errors;
+
 /// Track the state of TestResult.
 #[derive(Debug, PartialEq)]
 pub enum TestState {
@@ -27,6 +29,12 @@ pub struct TestResult {
     /// Result of comparison
     pub state: TestState,
 }
+
+/// Result of running a TestSuite.
+pub struct TestSuiteResult(
+    pub String,
+    pub Vec<Result<TestResult, errors::RuntError>>,
+);
 
 /// Format the output of the test into an expect string.
 /// An expect string is of the form:
@@ -67,6 +75,16 @@ impl TestResult {
             TS::Missing => {
                 buf.push_str(&"⚬ miss - ".yellow().to_string());
                 buf.push_str(&path_str.yellow().to_string());
+                if show_diff {
+                    let updated = to_expect_string(
+                        &self.status,
+                        &self.stdout,
+                        &self.stderr,
+                    );
+                    let diff = diff::gen_diff("", &updated);
+                    buf.push_str("\n");
+                    buf.push_str(&diff);
+                }
             }
             TS::Correct => {
                 buf.push_str(&"⚬ pass - ".green().to_string());

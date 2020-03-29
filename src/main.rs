@@ -1,16 +1,16 @@
+mod cli;
 mod diff;
 mod errors;
 mod test_results;
-mod cli;
 
+use cli::Opts;
 use futures::future;
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
-use test_results::{TestResult, TestState};
-use tokio::process::Command;
-use cli::Opts;
 use structopt::StructOpt;
+use test_results::{TestResult, TestState, TestSuiteResult};
+use tokio::process::Command;
 
 use errors::RuntError;
 
@@ -82,11 +82,13 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
 }
 
 fn print_test_suite_results(
-    name: &str,
+    opts: &Opts,
     num_tests: usize,
-    resolved: Vec<Result<TestResult, RuntError>>,
+    ts_results: TestSuiteResult,
 ) {
     use colored::*;
+    let TestSuiteResult(name, resolved) = ts_results;
+
     // Summarize all the results
     let (results, errors): (Vec<_>, Vec<_>) =
         resolved.into_iter().partition(|el| el.is_ok());
@@ -95,16 +97,15 @@ fn print_test_suite_results(
     results
         .into_iter()
         .map(Result::unwrap)
-        .for_each(|info| println!("  {}", info.report_str(true)));
+        .for_each(|info| println!("  {}", info.report_str(opts.diff)));
 
     // Report internal errors if any happened while executing this suite.
-    let err_rep: Vec<RuntError> = errors
-        .into_iter()
-        .map(Result::unwrap_err)
-        .collect();
+    let err_rep: Vec<RuntError> =
+        errors.into_iter().map(Result::unwrap_err).collect();
     if !err_rep.is_empty() {
         println!("  {}", "runt errors".red());
-        err_rep.into_iter()
+        err_rep
+            .into_iter()
             .for_each(|info| println!("    {}", info.to_string().red()))
     }
     ()
@@ -184,7 +185,11 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                 .chain(glob_errors_to_chain)
                 .collect();
 
-        print_test_suite_results(&suite.name, num_tests, resolved);
+        print_test_suite_results(
+            &opts,
+            num_tests,
+            TestSuiteResult(suite.name, resolved),
+        );
     }
     Ok(())
 }
@@ -215,6 +220,6 @@ fn run() -> Result<(), RuntError> {
 fn main() {
     match run() {
         Err(RuntError(msg)) => println!("error: {}", msg),
-        Ok(..) => ()
+        Ok(..) => (),
     }
 }

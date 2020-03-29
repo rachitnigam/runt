@@ -147,10 +147,12 @@ fn get_chunks<'a>(print_info: &'a Vec<PrintInfo>) -> Vec<Vec<PrintInfo<'a>>> {
             running = false;
             printable.push(cur_slice);
             cur_slice = Vec::new();
-        }
-        else {
+        } else {
             // println!("{}", "imp");
         }
+    }
+    if cur_slice.len() != 0 {
+        printable.push(cur_slice);
     }
     printable
 }
@@ -164,6 +166,7 @@ pub fn gen_diff<'a>(org: &str, new: &str) -> String {
     let print_chunks = get_chunks(&print_info);
 
     let mut str_buf = String::new();
+    str_buf.push_str(format!("{:>9}~\n", " ").as_str());
     for chunk in print_chunks {
         for info in chunk {
             str_buf.push_str(&info.to_diff());
