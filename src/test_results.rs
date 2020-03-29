@@ -90,7 +90,7 @@ impl TestResult {
                 }
             }
         };
-        buf.to_string()
+        buf
     }
 }
 
@@ -126,13 +126,13 @@ impl TestSuiteResult {
 
         println!("{} ({} tests)", name.bold(), num_tests);
         results
-            .into_iter()
+            .iter()
             .for_each(|info| println!("  {}", info.report_str(opts.diff)));
 
         if !errors.is_empty() {
             println!("  {}", "runt errors".red());
             errors
-                .into_iter()
+                .iter()
                 .for_each(|info| println!("    {}", info.to_string().red()))
         }
         self
@@ -142,9 +142,8 @@ impl TestSuiteResult {
     pub fn save_all(&mut self) -> &mut Self {
         let TestSuiteResult(_, results, _) = self;
         for result in results {
-            match result.save_results() {
-                Err(e) => self.2.push(e),
-                _ => ()
+            if let Err(e) = result.save_results() {
+                self.2.push(e);
             }
         }
         self
@@ -160,9 +159,9 @@ impl TestSuiteResult {
 /// ---STDERR---
 /// <contents of STDERR>
 pub fn to_expect_string(
-    status: &i32,
-    stdout: &String,
-    stderr: &String,
+    status: i32,
+    stdout: &str,
+    stderr: &str,
 ) -> String {
     let mut buf = String::new();
     buf.push_str("---CODE---\n");
@@ -170,12 +169,12 @@ pub fn to_expect_string(
     buf.push('\n');
 
     buf.push_str("---STDOUT---\n");
-    buf.push_str(stdout.as_str());
+    buf.push_str(stdout);
 
     buf.push_str("---STDERR---\n");
-    buf.push_str(stderr.as_str());
+    buf.push_str(stderr);
 
-    buf.to_string()
+    buf
 }
 
 /// Path of the expect file.

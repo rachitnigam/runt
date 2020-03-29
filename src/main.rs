@@ -35,7 +35,7 @@ struct TestSuite {
 }
 
 /// Transform a list of glob patterns into matching paths and list of errors.
-fn collect_globs<'a>(patterns: &Vec<String>) -> (Vec<PathBuf>, Vec<RuntError>) {
+fn collect_globs(patterns: &[String]) -> (Vec<PathBuf>, Vec<RuntError>) {
     // Generate list of all inputs using a globs and collect any errors.
     let mut matching_paths: Vec<PathBuf> = Vec::new();
     let mut errors: Vec<RuntError> = Vec::new();
@@ -74,9 +74,7 @@ fn collect_globs<'a>(patterns: &Vec<String>) -> (Vec<PathBuf>, Vec<RuntError>) {
 /// Construct a command to run by replacing all occurances of `{}` with that
 /// matching path.
 fn construct_command(cmd: &str, path: &PathBuf) -> Command {
-    let concrete_command = cmd
-        .clone()
-        .replace("{}", path.to_str().unwrap());
+    let concrete_command = cmd.replace("{}", path.to_str().unwrap());
     let mut cmd = Command::new("sh");
     cmd.arg("-c").arg(concrete_command);
     cmd
@@ -103,7 +101,7 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
 
                     // Generate expected string
                     let expect_string = test_results::to_expect_string(
-                        &status, &stdout, &stderr,
+                        status, &stdout, &stderr,
                     );
                     // Open expect file for comparison.
                     let expect_path = test_results::expect_file(&path);
@@ -126,7 +124,7 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
                         status,
                         stdout,
                         stderr,
-                        state: state,
+                        state,
                         saved: false,
                     });
                 });

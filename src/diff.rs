@@ -100,7 +100,7 @@ fn diff_with_lineno(changes: &Changeset) -> Vec<PrintInfo> {
 
 /// Chunk up the diff so that unchanged lines are only showed in the context
 /// of another changed lines.
-fn get_chunks<'a>(print_info: &'a Vec<PrintInfo>) -> Vec<Vec<PrintInfo<'a>>> {
+fn get_chunks<'a>(print_info: &'a [PrintInfo]) -> Vec<Vec<PrintInfo<'a>>> {
     use Mode as M;
     let mut printable: Vec<Vec<PrintInfo>> = Vec::new();
 
@@ -121,7 +121,7 @@ fn get_chunks<'a>(print_info: &'a Vec<PrintInfo>) -> Vec<Vec<PrintInfo<'a>>> {
         else if !running && node.0 != M::Same {
             // println!("{}", "b1");
             running = true;
-            &print_info[idx.saturating_sub(ctx_size)..idx]
+            print_info[idx.saturating_sub(ctx_size)..idx]
                 .iter()
                 .for_each(|el| cur_slice.push(el.clone()));
             cur_slice.push(node.clone());
@@ -151,7 +151,7 @@ fn get_chunks<'a>(print_info: &'a Vec<PrintInfo>) -> Vec<Vec<PrintInfo<'a>>> {
             // println!("{}", "imp");
         }
     }
-    if cur_slice.len() != 0 {
+    if !cur_slice.is_empty() {
         printable.push(cur_slice);
     }
     printable
@@ -159,7 +159,7 @@ fn get_chunks<'a>(print_info: &'a Vec<PrintInfo>) -> Vec<Vec<PrintInfo<'a>>> {
 
 /// Generate a rich string representation to show diffs with line number
 /// information.
-pub fn gen_diff<'a>(org: &str, new: &str) -> String {
+pub fn gen_diff(org: &str, new: &str) -> String {
     // Generate a changeset for the strings and get line number information.
     let changes = &Changeset::new(org, new, "\n");
     let print_info = diff_with_lineno(changes);
