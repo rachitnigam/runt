@@ -68,8 +68,9 @@ impl TestResult {
                     buf.push_str(&" (saved)".dimmed().to_string());
                 }
                 if show_diff {
+                    let diff = diff::gen_diff(&"".to_string(), &expect_string);
                     buf.push_str("\n");
-                    buf.push_str(&expect_string);
+                    buf.push_str(&diff);
                 }
             }
             TS::Correct => {
