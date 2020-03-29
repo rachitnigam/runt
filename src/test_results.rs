@@ -95,13 +95,18 @@ impl TestResult {
 }
 
 /// Result of running a TestSuite.
-pub struct TestSuiteResult(pub String, pub Vec<TestResult>, pub Vec<RuntError>);
+pub struct TestSuiteResult(
+    pub String,             // Name of the test suite.
+    pub i32,                // Number of matching paths.
+    pub Vec<TestResult>,    // TestResult for successfully executed tests.
+    pub Vec<RuntError>,     // Errors while running this suite.
+);
 
 impl TestSuiteResult {
     pub fn only_results(mut self, only: &Option<cli::OnlyOpt>) -> Self {
         use cli::OnlyOpt as O;
         use TestState as TS;
-        self.1.retain(|el| {
+        self.2.retain(|el| {
             if let (Some(only), TestResult { state, .. }) = (only, el) {
                 return match (only, state) {
                     (O::Fail, TS::Mismatch(..)) => true,
@@ -119,10 +124,9 @@ impl TestSuiteResult {
     pub fn print_test_suite_results(
         &self,
         opts: &cli::Opts,
-        num_tests: usize,
     ) -> &Self {
         use colored::*;
-        let TestSuiteResult(name, results, errors) = self;
+        let TestSuiteResult(name, num_tests, results, errors) = self;
 
         println!("{} ({} tests)", name.bold(), num_tests);
         results
@@ -140,10 +144,10 @@ impl TestSuiteResult {
 
     /// Save results from this TestSuite.
     pub fn save_all(&mut self) -> &mut Self {
-        let TestSuiteResult(_, results, _) = self;
+        let TestSuiteResult(_, _, results, _) = self;
         for result in results {
             if let Err(e) = result.save_results() {
-                self.2.push(e);
+                self.3.push(e);
             }
         }
         self
@@ -158,11 +162,7 @@ impl TestSuiteResult {
 /// <contents of STDOUT>
 /// ---STDERR---
 /// <contents of STDERR>
-pub fn to_expect_string(
-    status: i32,
-    stdout: &str,
-    stderr: &str,
-) -> String {
+pub fn to_expect_string(status: i32, stdout: &str, stderr: &str) -> String {
     let mut buf = String::new();
     buf.push_str("---CODE---\n");
     buf.push_str(format!("{}", status).as_str());

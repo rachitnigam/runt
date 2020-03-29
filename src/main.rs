@@ -81,9 +81,10 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
 }
 
 #[tokio::main]
-async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
+async fn execute_all(conf: &Config) -> Result<Vec<TestSuiteResult>, RuntError> {
     use errors::RichResult;
-    for suite in conf.tests {
+    let mut all_results = Vec::with_capacity(conf.tests.len());
+    for suite in &conf.tests {
         // Run pattern on the relative path.
         let (paths, glob_errors) = collect_globs(&suite.paths);
         let num_tests = paths.len();
@@ -153,17 +154,17 @@ async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
         use errors::RichVec;
         let (results, errors) = resolved.partition_results();
 
-        let mut all_results = TestSuiteResult(suite.name, results, errors)
-            .only_results(&opts.only);
-        if opts.save {
-            all_results.save_all();
-        }
-        all_results.print_test_suite_results(&opts, num_tests);
+        all_results.push(TestSuiteResult(
+            suite.name.clone(),
+            num_tests as i32,
+            results,
+            errors,
+        ));
     }
-    Ok(())
+    Ok(all_results)
 }
 
-fn run() -> Result<(), RuntError> {
+fn run() -> Result<i32, RuntError> {
     let opts = Opts::from_args();
 
     // Error if runt.toml doesn't exist.
@@ -183,13 +184,52 @@ fn run() -> Result<(), RuntError> {
         ))
     })?;
 
+    // Switch to directory containing runt.toml.
     std::env::set_current_dir(&opts.dir)?;
-    execute_all(conf, opts)
+
+    // Run all the test suites.
+    let all_results = execute_all(&conf)?;
+
+    // Summarize all the results.
+    {
+        use colored::*;
+        println!("{}\n", conf.name.underline().bold());
+    }
+    let (mut pass, mut fail, mut miss) = (0, 0, 0);
+    for res in all_results {
+        res.2.iter().for_each(|res| match res.state {
+            TestState::Correct => pass += 1,
+            TestState::Missing(..) => miss += 1,
+            TestState::Mismatch(..) => fail += 1,
+        });
+
+        let mut results = res.only_results(&opts.only);
+        if opts.save {
+            results.save_all();
+        }
+        results.print_test_suite_results(&opts);
+    }
+    {
+        use colored::*;
+        println!(
+            "\n{} {}\n{} {}\n{} {}\n",
+            miss.to_string().bold().yellow(),
+            "missing".bold().yellow(),
+            fail.to_string().bold().red(),
+            "failing".bold().red(),
+            pass.to_string().bold().green(),
+            "passing".bold().green()
+        )
+    }
+    Ok(fail + miss)
 }
 
 fn main() {
-    if let Err(RuntError(msg)) = run() {
-        println!("error: {}", msg);
-        std::process::exit(1);
-    }
+    std::process::exit(match run() {
+        Err(RuntError(msg)) => {
+            println!("error: {}", msg);
+            1
+        }
+        Ok(failed_tests) => failed_tests,
+    })
 }

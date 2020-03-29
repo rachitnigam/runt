@@ -1,6 +1,8 @@
 ---CODE---
-0
+3
 ---STDOUT---
+Runt Tests
+
 Cat tests (2 tests)
   ⚬ miss - cat-test/a.txt
          ~
@@ -34,4 +36,9 @@ Error test (1 tests)
     3   3│  ---STDOUT---
     4   4│  ---STDERR---
          ~
+
+2 missing
+1 failing
+1 passing
+
 ---STDERR---
