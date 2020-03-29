@@ -1,6 +1,3 @@
----CODE---
-3
----STDOUT---
 Runt Tests
 
 Cat tests (2 tests)
@@ -15,4 +12,5 @@ Error test (1 tests)
 1 failing
 1 passing
 
----STDERR---
+---CODE---
+3
