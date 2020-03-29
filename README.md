@@ -25,8 +25,6 @@ Runt is not useful when you want to do:
 Snapshot testing with runt is extremely flexible. For example, the tests
 under `runt-cli-test` test the outputs of the runt CLI.
 
-#### Workflow
-
 **Showing diffs**: By default, runt does not show diffs between the new output
 and the expect file. Use `--diff` to show the diffs.
 
