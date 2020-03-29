@@ -16,4 +16,4 @@ jobs:
         command: build
 
     - name: Test
-      run: ./target/debug/runt runt-cli-tests
+      run: ./target/debug/runt runt-cli-test
