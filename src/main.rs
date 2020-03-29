@@ -190,8 +190,8 @@ fn run() -> Result<(), RuntError> {
 }
 
 fn main() {
-    match run() {
-        Err(RuntError(msg)) => println!("error: {}", msg),
-        Ok(..) => (),
+    if let Err(RuntError(msg)) = run() {
+        println!("error: {}", msg);
+        std::process::exit(1);
     }
 }
