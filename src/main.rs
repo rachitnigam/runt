@@ -74,7 +74,9 @@ fn collect_globs<'a>(patterns: &Vec<String>) -> (Vec<PathBuf>, Vec<RuntError>) {
 /// Construct a command to run by replacing all occurances of `{}` with that
 /// matching path.
 fn construct_command(cmd: &str, path: &PathBuf) -> Command {
-    let concrete_command = cmd.clone().replace("{}", path.to_str().unwrap());
+    let concrete_command = cmd
+        .clone()
+        .replace("{}", path.to_str().unwrap());
     let mut cmd = Command::new("sh");
     cmd.arg("-c").arg(concrete_command);
     cmd
@@ -84,16 +86,8 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
 async fn execute_all(conf: Config, opts: Opts) -> Result<(), RuntError> {
     use errors::RichResult;
     for suite in conf.tests {
-        let rel_pats = suite
-            .paths
-            .iter()
-            .map(|pattern| {
-                opts.dir.to_str().unwrap().to_owned() + "/" + pattern
-            })
-            .collect();
-
         // Run pattern on the relative path.
-        let (paths, glob_errors) = collect_globs(&rel_pats);
+        let (paths, glob_errors) = collect_globs(&suite.paths);
         let num_tests = paths.len();
         let mut handles = Vec::with_capacity(num_tests);
         // For each test suite, extract the glob patterns and run the tests.
@@ -191,6 +185,7 @@ fn run() -> Result<(), RuntError> {
         ))
     })?;
 
+    std::env::set_current_dir(&opts.dir)?;
     execute_all(conf, opts)
 }
 
