@@ -1,6 +1,12 @@
 Runt Changelog
 ==============
 
+0.2.1
+-----
+- CLI uses "." as the default directory to find `runt.toml`.
+- Use distinct symbols to show test states.
+- Remove `name` field from the configuration.
+
 0.2.0
 -----
 - Execute test suites in parallel. If certain test suites take longer to run,
