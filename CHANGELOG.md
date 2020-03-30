@@ -1,6 +1,11 @@
 Runt Changelog
 ==============
 
+0.1.4
+-----
+- Suppress reporting when there are not tests of a certain category (fail,
+  miss, or correct).
+
 0.1.3
 -----
 
