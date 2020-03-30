@@ -38,6 +38,12 @@ fn collect_globs(patterns: &[String]) -> (Vec<PathBuf>, Vec<RuntError>) {
     let mut matching_paths: Vec<PathBuf> = Vec::new();
     let mut errors: Vec<RuntError> = Vec::new();
     for pattern in patterns {
+        // If the glob patter is a concrete path, skip it
+        let path = PathBuf::from(pattern);
+        if  path.is_file() {
+            matching_paths.push(path);
+            continue;
+        }
         let glob_res = glob::glob(&pattern);
         // The glob can either succeed for fail.
         match glob_res {
