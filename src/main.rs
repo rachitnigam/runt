@@ -40,7 +40,7 @@ fn collect_globs(patterns: &[String]) -> (Vec<PathBuf>, Vec<RuntError>) {
     for pattern in patterns {
         // If the glob patter is a concrete path, skip it
         let path = PathBuf::from(pattern);
-        if  path.is_file() {
+        if path.is_file() {
             matching_paths.push(path);
             continue;
         }

@@ -4,14 +4,16 @@ use structopt::StructOpt;
 
 /// Options for the CLI.
 #[derive(StructOpt, Debug)]
-#[structopt(name = "runt", about = "Lightweight snapshot testing.")]
+#[structopt(name = "runt", )]
+#[structopt(
+    name = env!("CARGO_PKG_NAME"),
+    version = env!("CARGO_PKG_VERSION"),
+    author = env!("CARGO_PKG_AUTHORS"),
+    about = "Lightweight snapshot testing.",
+)]
 pub struct Opts {
     /// Test folder.
-    #[structopt(
-        name = "TEST_DIR",
-        parse(from_os_str),
-        default_value="."
-    )]
+    #[structopt(name = "TEST_DIR", parse(from_os_str), default_value = ".")]
     pub dir: PathBuf,
 
     /// Show diffs for each failing test.
