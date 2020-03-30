@@ -7,7 +7,11 @@ use structopt::StructOpt;
 #[structopt(name = "runt", about = "Lightweight snapshot testing.")]
 pub struct Opts {
     /// Test folder.
-    #[structopt(name = "TEST_DIR", parse(from_os_str))]
+    #[structopt(
+        name = "TEST_DIR",
+        parse(from_os_str),
+        default_value="."
+    )]
     pub dir: PathBuf,
 
     /// Show diffs for each failing test.

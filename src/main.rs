@@ -14,11 +14,9 @@ use tokio::process::Command;
 use errors::RuntError;
 
 /// Configuration for a single runt run.
+/// Tests suites for this runt configuration
 #[derive(Debug, Deserialize)]
 struct Config {
-    /// Name of this runt configuration
-    name: String,
-    /// Tests suites for this runt configuration
     tests: Vec<TestSuite>,
 }
 
@@ -169,13 +167,10 @@ async fn execute_all(
 }
 
 fn summarize_all_results(
-    name: &str,
     opts: &Opts,
     all_results: Vec<Result<TestSuiteResult, RuntError>>,
 ) -> i32 {
     use colored::*;
-
-    println!("{}\n", name.underline().bold());
 
     // Collect summary statistics while printing this test suite.
     let (mut pass, mut fail, mut miss) = (0, 0, 0);
@@ -222,7 +217,7 @@ fn run() -> Result<i32, RuntError> {
         ))
     })?;
 
-    let Config { name, tests } = toml::from_str(contents).map_err(|err| {
+    let Config { tests } = toml::from_str(contents).map_err(|err| {
         RuntError(format!(
             "Failed to parse {}: {}",
             conf_path.to_str().unwrap(),
@@ -237,7 +232,7 @@ fn run() -> Result<i32, RuntError> {
     let all_results = execute_all(tests);
 
     // Summarize all the results.
-    Ok(summarize_all_results(&name, &opts, all_results))
+    Ok(summarize_all_results(&opts, all_results))
 }
 
 fn main() {
