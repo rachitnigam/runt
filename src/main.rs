@@ -211,17 +211,18 @@ fn run() -> Result<i32, RuntError> {
     }
     {
         use colored::*;
-        println!(
-            "\n{} {}\n{} {}\n{} {}\n",
-            miss.to_string().bold().yellow(),
-            "missing".bold().yellow(),
-            fail.to_string().bold().red(),
-            "failing".bold().red(),
-            pass.to_string().bold().green(),
-            "passing".bold().green()
-        )
+        println!();
+        if miss != 0 {
+            println!("{}", &format!("{} missing", miss).yellow().bold())
+        }
+        if fail != 0 {
+            println!("{}", &format!("{} failing", fail).red().bold());
+        }
+        if pass != 0 {
+            println!("{}", &format!("{} passing", pass).green().bold());
+        }
     }
-    Ok(fail + miss)
+    Ok(fail)
 }
 
 fn main() {
