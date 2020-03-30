@@ -1,6 +1,11 @@
 Runt Changelog
 ==============
 
+0.2.0
+-----
+- Execute test suites in parallel. If certain test suites take longer to run,
+  they will not block the execution of other test suites.
+
 0.1.4
 -----
 - Suppress reporting when there are not tests of a certain category (fail,

@@ -80,88 +80,134 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
     cmd
 }
 
-#[tokio::main]
-async fn execute_all(conf: &Config) -> Result<Vec<TestSuiteResult>, RuntError> {
+/// Create a task to asynchronously execute this test.
+async fn execute_test(
+    mut cmd: Command,
+    path: PathBuf,
+) -> Result<TestResult, RuntError> {
+    let out = cmd.output().await?;
+    let status = out.status.code().unwrap_or(-1);
+    let stdout = String::from_utf8(out.stdout)?;
+    let stderr = String::from_utf8(out.stderr)?;
+
+    // Generate expected string
+    let expect_string =
+        test_results::to_expect_string(status, &stdout, &stderr);
+    // Open expect file for comparison.
+    let expect_path = test_results::expect_file(&path);
+    let state = tokio::fs::read_to_string(expect_path)
+        .await
+        .map(|contents| {
+            if contents == expect_string {
+                TestState::Correct
+            } else {
+                TestState::Mismatch(expect_string.clone(), contents)
+            }
+        })
+        .unwrap_or(TestState::Missing(expect_string));
+
+    Ok(TestResult {
+        path,
+        status,
+        stdout,
+        stderr,
+        state,
+        saved: false,
+    })
+}
+
+async fn execute_test_suite(suite: TestSuite) -> TestSuiteResult {
     use errors::RichResult;
-    let mut all_results = Vec::with_capacity(conf.tests.len());
-    for suite in &conf.tests {
-        // Run pattern on the relative path.
-        let (paths, glob_errors) = collect_globs(&suite.paths);
-        let num_tests = paths.len();
-        let mut handles = Vec::with_capacity(num_tests);
-        // For each test suite, extract the glob patterns and run the tests.
-        // XXX(rachit): Slower test suites will block other tests from running.
-        for path in paths {
-            let mut cmd = construct_command(&suite.cmd, &path);
-            let handle: tokio::task::JoinHandle<Result<_, RuntError>> =
-                tokio::spawn(async move {
-                    let out = cmd.output().await?;
-                    let status = out.status.code().unwrap_or(-1);
-                    let stdout = String::from_utf8(out.stdout)?;
-                    let stderr = String::from_utf8(out.stderr)?;
+    use errors::RichVec;
 
-                    // Generate expected string
-                    let expect_string = test_results::to_expect_string(
-                        status, &stdout, &stderr,
-                    );
-                    // Open expect file for comparison.
-                    let expect_path = test_results::expect_file(&path);
-                    let state = tokio::fs::read_to_string(expect_path)
-                        .await
-                        .map(|contents| {
-                            if contents == expect_string {
-                                TestState::Correct
-                            } else {
-                                TestState::Mismatch(
-                                    expect_string.clone(),
-                                    contents,
-                                )
-                            }
-                        })
-                        .unwrap_or(TestState::Missing(expect_string));
+    // For each test suite, extract the glob patterns and run the tests.
+    let (paths, glob_errors) = collect_globs(&suite.paths);
+    let glob_errors_to_chain = glob_errors
+        .into_iter()
+        .map(Err)
+        .collect::<Vec<Result<TestResult, RuntError>>>();
 
-                    return Ok(TestResult {
-                        path,
-                        status,
-                        stdout,
-                        stderr,
-                        state,
-                        saved: false,
-                    });
-                });
-            handles.push(handle);
-        }
+    // Create async tasks for all tests and get handle.
+    let num_tests = paths.len();
+    let handles = paths.into_iter().map(|path| {
+        let cmd = construct_command(&suite.cmd, &path);
+        tokio::spawn(execute_test(cmd, path))
+    });
 
-        let glob_errors_to_chain = glob_errors
+    // Run all the tests in this suite and collect and errors.
+    let resolved: Vec<Result<TestResult, RuntError>> =
+        future::join_all(handles)
+            .await
             .into_iter()
-            .map(Err)
-            .collect::<Vec<Result<TestResult, RuntError>>>();
+            .map(|res_of_res| {
+                res_of_res
+                    .map_err(|err| RuntError(err.to_string()))
+                    // Collapse multiple levels of Results into one.
+                    .collapse()
+            })
+            .chain(glob_errors_to_chain)
+            .collect();
 
-        // Run all the tests in this suite and collect and errors.
-        let resolved: Vec<Result<TestResult, RuntError>> =
-            future::join_all(handles)
-                .await
-                .into_iter()
-                .map(|res_of_res| {
-                    res_of_res
-                        .map_err(|err| RuntError(err.to_string()))
-                        // Collapse multiple levels of Results into one.
-                        .collapse()
-                })
-                .chain(glob_errors_to_chain)
-                .collect();
+    let (results, errors) = resolved.partition_results();
 
-        use errors::RichVec;
-        let (results, errors) = resolved.partition_results();
+    TestSuiteResult(suite.name.clone(), num_tests as i32, results, errors)
+}
 
-        all_results.push(TestSuiteResult(
-            suite.name.clone(),
-            num_tests as i32,
-            results,
-            errors,
-        ));
+#[tokio::main]
+async fn execute_all(
+    suites: Vec<TestSuite>,
+) -> Vec<Result<TestSuiteResult, RuntError>> {
+    let test_suite_tasks = suites
+        .into_iter()
+        .map(|suite| tokio::spawn(execute_test_suite(suite)));
+
+    future::join_all(test_suite_tasks)
+        .await
+        .into_iter()
+        .map(|res| res.map_err(|err| RuntError(err.to_string())))
+        .collect()
+}
+
+fn summarize_all_results(
+    name: &str,
+    opts: &Opts,
+    all_results: Vec<Result<TestSuiteResult, RuntError>>,
+) -> i32 {
+    use colored::*;
+
+    println!("{}\n", name.underline().bold());
+
+    // Collect summary statistics while printing this test suite.
+    let (mut pass, mut fail, mut miss) = (0, 0, 0);
+    for suite_res in all_results {
+        if let Ok(res) = suite_res {
+            res.2.iter().for_each(|res| match res.state {
+                TestState::Correct => pass += 1,
+                TestState::Missing(..) => miss += 1,
+                TestState::Mismatch(..) => fail += 1,
+            });
+
+            let mut results = res.only_results(&opts.only);
+            if opts.save {
+                results.save_all();
+            }
+            results.print_test_suite_results(&opts);
+        } else if let Err(err) = suite_res {
+            println!("Failed to execute test suite: {}", err);
+        }
     }
-    Ok(all_results)
+
+    println!();
+    if miss != 0 {
+        println!("{}", &format!("{} missing", miss).yellow().bold())
+    }
+    if fail != 0 {
+        println!("{}", &format!("{} failing", fail).red().bold());
+    }
+    if pass != 0 {
+        println!("{}", &format!("{} passing", pass).green().bold());
+    }
+    fail
 }
 
 fn run() -> Result<i32, RuntError> {
@@ -176,7 +222,7 @@ fn run() -> Result<i32, RuntError> {
         ))
     })?;
 
-    let conf: Config = toml::from_str(contents).map_err(|err| {
+    let Config { name, tests } = toml::from_str(contents).map_err(|err| {
         RuntError(format!(
             "Failed to parse {}: {}",
             conf_path.to_str().unwrap(),
@@ -188,41 +234,10 @@ fn run() -> Result<i32, RuntError> {
     std::env::set_current_dir(&opts.dir)?;
 
     // Run all the test suites.
-    let all_results = execute_all(&conf)?;
+    let all_results = execute_all(tests);
 
     // Summarize all the results.
-    {
-        use colored::*;
-        println!("{}\n", conf.name.underline().bold());
-    }
-    let (mut pass, mut fail, mut miss) = (0, 0, 0);
-    for res in all_results {
-        res.2.iter().for_each(|res| match res.state {
-            TestState::Correct => pass += 1,
-            TestState::Missing(..) => miss += 1,
-            TestState::Mismatch(..) => fail += 1,
-        });
-
-        let mut results = res.only_results(&opts.only);
-        if opts.save {
-            results.save_all();
-        }
-        results.print_test_suite_results(&opts);
-    }
-    {
-        use colored::*;
-        println!();
-        if miss != 0 {
-            println!("{}", &format!("{} missing", miss).yellow().bold())
-        }
-        if fail != 0 {
-            println!("{}", &format!("{} failing", fail).red().bold());
-        }
-        if pass != 0 {
-            println!("{}", &format!("{} passing", pass).green().bold());
-        }
-    }
-    Ok(fail)
+    Ok(summarize_all_results(&name, &opts, all_results))
 }
 
 fn main() {
