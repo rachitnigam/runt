@@ -1,6 +1,3 @@
-# Name of the test suite (required)
-name = "Runt Tests"
-
 # Configuration for each test suite.
 [[tests]]
 # Optional name for this test suite.

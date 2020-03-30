@@ -62,7 +62,7 @@ impl TestResult {
         let path_str = self.path.to_str().unwrap();
         match &self.state {
             TS::Missing(expect_string) => {
-                buf.push_str(&"⚬ miss - ".yellow().to_string());
+                buf.push_str(&"? miss - ".yellow().to_string());
                 buf.push_str(&path_str.yellow().to_string());
                 if self.saved {
                     buf.push_str(&" (saved)".dimmed().to_string());
@@ -74,11 +74,11 @@ impl TestResult {
                 }
             }
             TS::Correct => {
-                buf.push_str(&"⚬ pass - ".green().to_string());
+                buf.push_str(&"✓ pass - ".green().to_string());
                 buf.push_str(&path_str.green().to_string());
             }
             TS::Mismatch(expect_string, contents) => {
-                buf.push_str(&"⚬ fail - ".red().to_string());
+                buf.push_str(&"✗ fail - ".red().to_string());
                 buf.push_str(&path_str.red().to_string());
                 if self.saved {
                     buf.push_str(&" (saved)".dimmed().to_string());

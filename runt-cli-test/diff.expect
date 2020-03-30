@@ -1,12 +1,10 @@
-Runt Tests
-
 Cat tests (2 tests)
-  ⚬ miss - cat-test/a.txt
+  ? miss - cat-test/a.txt
          ~
         1│+ 1 2 3
         2│+ 
          ~
-  ⚬ fail - cat-test/b.txt
+  ✗ fail - cat-test/b.txt
          ~
     1    │- ---CODE---
     2    │- 0
@@ -19,7 +17,7 @@ Cat tests (2 tests)
     7    │- ---STDERR---
          ~
 Ls test (1 tests)
-  ⚬ miss - ls-test/input.txt
+  ? miss - ls-test/input.txt
          ~
         1│+ cat-test
         2│+ error-test
@@ -28,7 +26,7 @@ Ls test (1 tests)
         5│+ 
          ~
 Error test (1 tests)
-  ⚬ pass - error-test/input.txt
+  ✓ pass - error-test/input.txt
 
 2 missing
 1 failing

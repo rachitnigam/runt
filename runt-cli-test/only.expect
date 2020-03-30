@@ -1,13 +1,11 @@
-Runt Tests
-
 Cat tests (2 tests)
-  ⚬ miss - cat-test/a.txt
+  ? miss - cat-test/a.txt
          ~
         1│+ 1 2 3
         2│+ 
          ~
 Ls test (1 tests)
-  ⚬ miss - ls-test/input.txt
+  ? miss - ls-test/input.txt
          ~
         1│+ cat-test
         2│+ error-test
