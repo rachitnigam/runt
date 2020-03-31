@@ -4,8 +4,10 @@ mod errors;
 mod test_results;
 
 use cli::Opts;
-use futures::future;
+use futures::io::{AllowStdIo, AsyncWriteExt};
+use futures::{future, stream::FuturesUnordered};
 use serde::Deserialize;
+use std::io::{self, BufWriter, Cursor};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use test_results::{TestResult, TestState, TestSuiteResult};
@@ -161,18 +163,48 @@ async fn execute_test_suite(suite: TestSuite) -> TestSuiteResult {
 }
 
 #[tokio::main]
-async fn execute_all(
-    suites: Vec<TestSuite>,
-) -> Vec<Result<TestSuiteResult, RuntError>> {
+async fn execute_all(suites: Vec<TestSuite>, opts: Opts) -> i32 {
+    use futures::stream::StreamExt;
     let test_suite_tasks = suites
         .into_iter()
-        .map(|suite| tokio::spawn(execute_test_suite(suite)));
+        .map(|suite| execute_test_suite(suite))
+        .collect::<FuturesUnordered<_>>();
 
-    future::join_all(test_suite_tasks)
-        .await
-        .into_iter()
-        .map(|res| res.map_err(|err| RuntError(err.to_string())))
-        .collect()
+    // In a loop, retreive the results of each test suite. Since we use
+    // FuturesUnoredered, test suites are retuned in order of completion.
+    let (mut pass, mut fail, mut miss) = (0, 0, 0);
+    let mut task = test_suite_tasks.into_future();
+    // Buffered writing for stdout.
+    let stdout = io::stdout();
+    let mut handle = AllowStdIo::new(BufWriter::new(stdout));
+    loop {
+        match task.await {
+            (None, _) => break,
+            (Some(res), nxt) => {
+                let (buf, p, f, m) = res.test_suite_results(&opts);
+                handle.write_all(buf.as_bytes()).await;
+                handle.flush().await;
+                //write!(handle, "{}", buf);
+                pass += p;
+                fail += f;
+                miss += m;
+                task = nxt.into_future();
+            }
+        }
+    }
+
+    use colored::*;
+    println!();
+    if miss != 0 {
+        println!("{}", &format!("{} missing", miss).yellow().bold())
+    }
+    if fail != 0 {
+        println!("{}", &format!("{} failing", fail).red().bold());
+    }
+    if pass != 0 {
+        println!("{}", &format!("{} passing", pass).green().bold());
+    }
+    fail
 }
 
 fn summarize_all_results(
@@ -195,7 +227,7 @@ fn summarize_all_results(
             if opts.save {
                 results.save_all();
             }
-            results.print_test_suite_results(&opts);
+            results.test_suite_results(&opts);
         } else if let Err(err) = suite_res {
             println!("Failed to execute test suite: {}", err);
         }
@@ -238,10 +270,10 @@ fn run() -> Result<i32, RuntError> {
     std::env::set_current_dir(&opts.dir)?;
 
     // Run all the test suites.
-    let all_results = execute_all(tests);
+    let all_results = execute_all(tests, opts);
 
     // Summarize all the results.
-    Ok(summarize_all_results(&opts, all_results))
+    Ok(all_results)
 }
 
 fn main() {

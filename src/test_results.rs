@@ -120,23 +120,38 @@ impl TestSuiteResult {
         self
     }
 
-    /// Print the results of running this test suite.
-    pub fn print_test_suite_results(&self, opts: &cli::Opts) -> &Self {
+    /// Generate a summary of this test suite. Returns a formatted string,
+    /// number of passing, failing, and missing tests.
+    pub fn test_suite_results(
+        &self,
+        opts: &cli::Opts,
+    ) -> (String, i32, i32, i32) {
+        // XXX(rachit): println! causes stdout to flush. Use something better.
+        // One issue might be that the colored library doesn't work correctly
+        // with buffers.
         use colored::*;
         let TestSuiteResult(name, num_tests, results, errors) = self;
 
-        println!("{} ({} tests)", name.bold(), num_tests);
-        results
-            .iter()
-            .for_each(|info| println!("  {}", info.report_str(opts.diff)));
+        let mut buf = String::with_capacity(500);
+        let (mut pass, mut fail, mut miss) = (0, 0, 0);
+
+        buf.push_str(&format!("{} ({} tests)\n", name.bold(), num_tests));
+        results.iter().for_each(|info| {
+            buf.push_str(&format!("  {}\n", info.report_str(opts.diff)));
+            match info.state {
+                TestState::Correct => pass += 1,
+                TestState::Missing(..) => miss += 1,
+                TestState::Mismatch(..) => fail += 1,
+            }
+        });
 
         if !errors.is_empty() {
-            println!("  {}", "runt errors".red());
-            errors
-                .iter()
-                .for_each(|info| println!("    {}", info.to_string().red()))
+            buf.push_str(&format!("  {}\n", "runt errors".red()));
+            errors.iter().for_each(|info| {
+                buf.push_str(&format!("    {}\n", info.to_string().red()))
+            });
         }
-        self
+        (buf.to_string(), pass, fail, miss)
     }
 
     /// Save results from this TestSuite.
