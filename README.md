@@ -71,6 +71,13 @@ failing, missing, or correct tests. It composes with the diff and save flags.
 - Runt has a minimal configuration example under cli-tools. The `runt.toml`
   file contains all the configuration and explanation for various options.
 
+### Troubleshooting
+
+- **When executing a large test suite, I get `Too many open files (os error 24)`.**
+  Runt tries to spawn as many processes in parallel as possible and might hit
+  the system limit on open file descriptors. Use `ulimit -n 4096` to increase
+  the number of file descriptors that can be opened at the same time.
+
 ### Other options
 
 - **[Turnt][]** is a testing framework that allows for more
