@@ -89,7 +89,10 @@ async fn execute_test(
     mut cmd: Command,
     path: PathBuf,
 ) -> Result<TestResult, RuntError> {
-    let out = cmd.output().await?;
+    let out = cmd.output().await.map_err(|err| {
+        RuntError(format!("{}: {}", path.to_str().unwrap(), err.to_string()))
+    })?;
+
     let status = out.status.code().unwrap_or(-1);
     let stdout = String::from_utf8(out.stdout)?;
     let stderr = String::from_utf8(out.stderr)?;
