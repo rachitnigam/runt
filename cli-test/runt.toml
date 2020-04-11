@@ -1,3 +1,6 @@
+# Version of runt to be used with this configuration.
+ver = "0.2.2"
+
 # Configuration for each test suite.
 [[tests]]
 # Optional name for this test suite.

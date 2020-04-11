@@ -17,6 +17,7 @@ use errors::RuntError;
 /// Tests suites for this runt configuration
 #[derive(Debug, Deserialize)]
 struct Config {
+    ver: String,
     tests: Vec<TestSuite>,
 }
 
@@ -30,6 +31,8 @@ struct TestSuite {
     /// Command to execute. The pattern `{}` in this string is replaced with
     /// the matching path.
     cmd: String,
+    /// Optional directory to store the generated .expect files.
+    expect_dir: Option<PathBuf>,
 }
 
 /// Transform a list of glob patterns into matching paths and list of errors.
@@ -88,6 +91,7 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
 async fn execute_test(
     mut cmd: Command,
     path: PathBuf,
+    expect_dir: Option<PathBuf>,
 ) -> Result<TestResult, RuntError> {
     let out = cmd.output().await.map_err(|err| {
         RuntError(format!("{}: {}", path.to_str().unwrap(), err.to_string()))
@@ -101,8 +105,8 @@ async fn execute_test(
     let expect_string =
         test_results::to_expect_string(status, &stdout, &stderr);
     // Open expect file for comparison.
-    let expect_path = test_results::expect_file(&path);
-    let state = tokio::fs::read_to_string(expect_path)
+    let expect_path = test_results::expect_file(expect_dir, &path);
+    let state = tokio::fs::read_to_string(expect_path.clone())
         .await
         .map(|contents| {
             if contents == expect_string {
@@ -115,6 +119,7 @@ async fn execute_test(
 
     Ok(TestResult {
         path,
+        expect_path,
         status,
         stdout,
         stderr,
@@ -138,7 +143,7 @@ async fn execute_test_suite(suite: TestSuite) -> TestSuiteResult {
     let num_tests = paths.len();
     let handles = paths.into_iter().map(|path| {
         let cmd = construct_command(&suite.cmd, &path);
-        tokio::spawn(execute_test(cmd, path))
+        tokio::spawn(execute_test(cmd, path, suite.expect_dir.clone()))
     });
 
     // Run all the tests in this suite and collect and errors.
@@ -226,13 +231,19 @@ fn run() -> Result<i32, RuntError> {
         ))
     })?;
 
-    let Config { tests } = toml::from_str(contents).map_err(|err| {
+    let Config { ver, tests } = toml::from_str(contents).map_err(|err| {
         RuntError(format!(
             "Failed to parse {}: {}",
             conf_path.to_str().unwrap(),
             err.to_string()
         ))
     })?;
+
+    // Check if the current `runt` matches the version specified in
+    // the configuration.
+    if env!("CARGO_PKG_VERSION") != ver {
+        return Err(RuntError(format!("Runt version mismatch. Configuration requires: {}, tool version: {}.\nRun `cargo update runt` to get the latest version of runt.", ver, env!("CARGO_PKG_VERSION"))))
+    }
 
     // Switch to directory containing runt.toml.
     std::env::set_current_dir(&opts.dir)?;

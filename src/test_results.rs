@@ -1,5 +1,6 @@
 use crate::cli;
 use crate::errors::RuntError;
+use std::path::PathBuf;
 
 /// Track the state of TestResult.
 #[derive(Debug, PartialEq)]
@@ -20,7 +21,10 @@ pub enum TestState {
 #[derive(Debug)]
 pub struct TestResult {
     /// Path of the test
-    pub path: std::path::PathBuf,
+    pub path: PathBuf,
+
+    /// Location of the expect string.
+    pub expect_path: PathBuf,
 
     /// Return status of the test.
     pub status: i32,
@@ -47,7 +51,13 @@ impl TestResult {
             TS::Correct => Ok(()),
             TS::Missing(expect) | TS::Mismatch(expect, _) => {
                 self.saved = true;
-                Ok(fs::write(expect_file(&self.path), expect)?)
+                fs::write(&self.expect_path, expect).map_err(|err| {
+                    RuntError(format!(
+                        "{}: {}.",
+                        self.expect_path.to_str().unwrap(),
+                        err
+                    ))
+                })
             }
         }
     }
@@ -179,6 +189,10 @@ pub fn to_expect_string(status: i32, stdout: &str, stderr: &str) -> String {
 }
 
 /// Path of the expect file.
-pub fn expect_file(path: &std::path::PathBuf) -> std::path::PathBuf {
-    path.as_path().with_extension("expect")
+pub fn expect_file(expect_dir: Option<PathBuf>, path: &PathBuf) -> PathBuf {
+    expect_dir
+        .map(|base| base.join(path.file_name().unwrap()))
+        .unwrap_or(path.to_path_buf())
+        .as_path()
+        .with_extension("expect")
 }
