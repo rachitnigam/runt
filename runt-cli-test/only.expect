@@ -7,11 +7,12 @@ Cat tests (2 tests)
 Ls test (1 tests)
   ? miss - ls-test/input.txt
          ~
-        1│+ cat-test
-        2│+ error-test
-        3│+ ls-test
-        4│+ runt.toml
-        5│+ 
+        1│+ cat-out
+        2│+ cat-test
+        3│+ error-test
+        4│+ ls-test
+        5│+ runt.toml
+        6│+ 
          ~
 Error test (1 tests)
 

@@ -38,17 +38,30 @@ under `runt-cli-test` test the outputs of the runt CLI.
 Runt is configured using a single `runt.toml` file:
 
 ```toml
-# Runts support multiple test suites.
+# Version of runt to be used with this configuration.
+ver = "0.2.2"
+
+# Configuration for each test suite. File paths are relative to the folder
+# containing runt.toml.
 [[tests]]
 # Optional name for this test suite.
 name = "Cat tests"
-# Test paths are a list of glob patterns.
+# Test paths can be globs or exact.
 paths = [ "cat-test/*.txt" ]
-# Command to run on each test file. {} is replaced with the path.
+# Command to run on each test file. {} is replaced with input name.
 cmd = "cat {}"
+# (Optional) Directory to store the generated .expect files.
+expect_dir = "cat-out/"
 
-# More test suite configurations ...
 [[tests]]
+name = "Ls test"
+paths = [ "ls-test/input.txt" ]
+cmd = "cat {} | ls"
+
+[[tests]]
+name = "Error test"
+paths = ["error-test/input.txt"]
+cmd = "echo error message 1>&2 && exit 1"
 ```
 
 Run `runt <dir>` to execute all the tests. `<dir>` defaults to the current

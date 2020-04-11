@@ -1,7 +1,8 @@
 # Version of runt to be used with this configuration.
 ver = "0.2.2"
 
-# Configuration for each test suite.
+# Configuration for each test suite. File paths are relative to the folder
+# containing runt.toml.
 [[tests]]
 # Optional name for this test suite.
 name = "Cat tests"
@@ -9,6 +10,8 @@ name = "Cat tests"
 paths = [ "cat-test/*.txt" ]
 # Command to run on each test file. {} is replaced with input name.
 cmd = "cat {}"
+# (Optional) Directory to store the generated .expect files.
+expect_dir = "cat-out/"
 
 [[tests]]
 name = "Ls test"
