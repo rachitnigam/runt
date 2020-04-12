@@ -242,7 +242,7 @@ fn run() -> Result<i32, RuntError> {
     // Check if the current `runt` matches the version specified in
     // the configuration.
     if env!("CARGO_PKG_VERSION") != ver {
-        return Err(RuntError(format!("Runt version mismatch. Configuration requires: {}, tool version: {}.\nRun `cargo update runt` to get the latest version of runt.", ver, env!("CARGO_PKG_VERSION"))))
+        return Err(RuntError(format!("Runt version mismatch. Configuration requires: {}, tool version: {}.\nRun `cargo install runt` to get the latest version of runt.", ver, env!("CARGO_PKG_VERSION"))))
     }
 
     // Switch to directory containing runt.toml.

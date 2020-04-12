@@ -1,6 +1,10 @@
 Runt Changelog
 ==============
 
+0.2.3
+-----
+- Bug fix: Print out the right `runt` command when runt configuration version does not match.
+
 0.2.2
 -----
 - Add `ver` and `expect_dir` configuration options to runt.toml.
