@@ -1,6 +1,10 @@
 Runt Changelog
 ==============
 
+0.2.2
+-----
+- Add `ver` and `expect_dir` configuration options to runt.toml.
+
 0.2.1
 -----
 - CLI uses "." as the default directory to find `runt.toml`.
