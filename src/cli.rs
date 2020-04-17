@@ -1,10 +1,11 @@
 use crate::errors;
+use regex::Regex;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 /// Options for the CLI.
 #[derive(StructOpt, Debug)]
-#[structopt(name = "runt", )]
+#[structopt(name = "runt")]
 #[structopt(
     name = env!("CARGO_PKG_NAME"),
     version = env!("CARGO_PKG_VERSION"),
@@ -39,6 +40,8 @@ pub enum OnlyOpt {
     Pass,
     /// Tests missing expect files.
     Missing,
+    /// Filter tests to run by matching a regex.
+    Matches(Regex),
 }
 
 impl std::str::FromStr for OnlyOpt {
@@ -49,9 +52,9 @@ impl std::str::FromStr for OnlyOpt {
             "fail" => Ok(OnlyOpt::Fail),
             "pass" => Ok(OnlyOpt::Pass),
             "miss" => Ok(OnlyOpt::Missing),
-            _ => Err(errors::RuntError(
-                "Must be one of fail, pass, miss.".to_string(),
-            )),
+            matches => Regex::new(matches)
+                .map_err(|err| errors::RuntError(err.to_string()))
+                .map(|reg| OnlyOpt::Matches(reg)),
         }
     }
 }

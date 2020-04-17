@@ -122,7 +122,10 @@ impl TestSuiteResult {
                     (O::Fail, TS::Mismatch(..)) => true,
                     (O::Pass, TS::Correct) => true,
                     (O::Missing, TS::Missing(..)) => true,
-                    _ => false,
+                    (O::Matches(_), _)
+                    | (O::Fail, _)
+                    | (O::Pass, _)
+                    | (O::Missing, _) => false,
                 };
             }
             true
