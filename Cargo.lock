@@ -441,7 +441,7 @@ checksum = "7fe5bd57d1d7414c6b5ed48563a2c855d995ff777729dcd91c369ec7fea395ae"
 
 [[package]]
 name = "runt"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "colored",
  "difference",

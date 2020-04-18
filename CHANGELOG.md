@@ -1,6 +1,15 @@
 Runt Changelog
 ==============
 
+0.2.4
+-----
+- Implement "pre-filters"
+  - `--include`: Only run tests that match given regex.
+  - `--exclude`: Exclude tests that match given regex.
+- Modification to test suite name printing: When all tests from a test suite
+  are suppressed, don't print the name.
+- Code reorganization.
+
 0.2.3
 -----
 - Bug fix: Print out the right `runt` command when runt configuration version does not match.
