@@ -1,0 +1,8 @@
+Cat tests (2 tests)
+  ? miss - cat-test/a.txt
+  ✗ fail - cat-test/b.txt
+
+1 missing
+1 failing
+---CODE---
+1

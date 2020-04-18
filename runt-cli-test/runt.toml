@@ -15,3 +15,18 @@ cmd = "../target/debug/runt ../cli-test -d"
 name = "only output"
 paths = [ "only" ]
 cmd = "../target/debug/runt ../cli-test --only miss -d"
+
+[[tests]]
+name = "include regex"
+paths = [ "incl" ]
+cmd = "../target/debug/runt ../cli-test -i input"
+
+[[tests]]
+name = "exclude regex"
+paths = [ "excl" ]
+cmd = "../target/debug/runt ../cli-test -x input"
+
+[[tests]]
+name = "exclude regex & status"
+paths = [ "excl-status" ]
+cmd = "../target/debug/runt ../cli-test -x input -o fail"

@@ -14,7 +14,6 @@ Ls test (1 tests)
         5│+ runt.toml
         6│+ 
          ~
-Error test (1 tests)
 
 2 missing
 1 failing
