@@ -113,6 +113,7 @@ pub struct TestSuiteResult(
 );
 
 impl TestSuiteResult {
+    /// Filter out the test suite results using the test statuses.
     pub fn only_results(mut self, only: &Option<cli::OnlyOpt>) -> Self {
         use cli::OnlyOpt as O;
         use TestState as TS;
@@ -138,16 +139,18 @@ impl TestSuiteResult {
         use colored::*;
         let TestSuiteResult(name, num_tests, results, errors) = self;
 
-        println!("{} ({} tests)", name.bold(), num_tests);
-        results
-            .iter()
-            .for_each(|info| println!("  {}", info.report_str(opts.diff)));
-
-        if !errors.is_empty() {
-            println!("  {}", "runt errors".red());
-            errors
+        if !results.is_empty() || !errors.is_empty() {
+            println!("{} ({} tests)", name.bold(), num_tests);
+            results
                 .iter()
-                .for_each(|info| println!("    {}", info.to_string().red()))
+                .for_each(|info| println!("  {}", info.report_str(opts.diff)));
+
+            if !errors.is_empty() {
+                println!("  {}", "runt errors".red());
+                errors
+                    .iter()
+                    .for_each(|info| println!("    {}", info.to_string().red()))
+            }
         }
         self
     }
@@ -195,7 +198,7 @@ pub fn to_expect_string(status: i32, stdout: &str, stderr: &str) -> String {
 pub fn expect_file(expect_dir: Option<PathBuf>, path: &PathBuf) -> PathBuf {
     expect_dir
         .map(|base| base.join(path.file_name().unwrap()))
-        .unwrap_or(path.to_path_buf())
+        .unwrap_or_else(|| path.to_path_buf())
         .as_path()
         .with_extension("expect")
 }

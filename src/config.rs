@@ -31,7 +31,8 @@ impl From<SuiteConfig> for TestSuite {
     /// list of errors.
     fn from(conf: SuiteConfig) -> Self {
         // Arcane sorcery
-        let all_paths = conf.paths
+        let all_paths = conf
+            .paths
             .into_iter()
             .map(|pattern| glob::glob(&pattern))
             .collect::<Result<Vec<_>, glob::PatternError>>()

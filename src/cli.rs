@@ -27,16 +27,16 @@ pub struct Opts {
     pub save: bool,
 
     /// Post filters for test status.
-    #[structopt(short="o", long="only")]
+    #[structopt(short = "o", long = "only")]
     pub post_filter: Option<OnlyOpt>,
 
     /// Exclude matching tests.
-    #[structopt(short="x", long="exclude")]
-    pub exclude_filter: Option<Regex>,
+    #[structopt(short = "x", long = "exclude")]
+    pub exclude_filter: Option<String>,
 
     /// Include matching tests.
-    #[structopt(short="i", long="include")]
-    pub include_filter: Option<Regex>,
+    #[structopt(short = "i", long = "include")]
+    pub include_filter: Option<String>,
 }
 
 /// Possible values for the --only flag.
@@ -62,7 +62,7 @@ impl std::str::FromStr for OnlyOpt {
             "miss" => Ok(OnlyOpt::Missing),
             matches => Regex::new(matches)
                 .map_err(|err| errors::RuntError(err.to_string()))
-                .map(|reg| OnlyOpt::Matches(reg)),
+                .map(OnlyOpt::Matches),
         }
     }
 }

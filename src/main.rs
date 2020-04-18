@@ -9,17 +9,32 @@ use cli::Opts;
 use config::Config;
 use errors::RuntError;
 use futures::future;
+use regex::Regex;
 use structopt::StructOpt;
 use test_results::{TestState, TestSuiteResult};
 use test_suite::TestSuite;
 
+/// Execute the runt configuration and generate results.
 #[tokio::main]
 async fn execute_all(
     suites: Vec<TestSuite>,
+    opts: &Opts,
 ) -> Vec<Result<TestSuiteResult, RuntError>> {
-    let test_suite_tasks = suites
-        .into_iter()
-        .map(|suite| tokio::spawn(suite.execute_test_suite()));
+    let incl_reg = opts
+        .include_filter
+        .as_ref()
+        .map(|reg| Regex::new(&reg).expect("Invalid include regex"));
+    let excl_reg = opts
+        .exclude_filter
+        .as_ref()
+        .map(|reg| Regex::new(&reg).expect("Invalid exclude regex"));
+
+    let test_suite_tasks = suites.into_iter().map(|suite| {
+        let filtered = suite
+            .with_include_filter(incl_reg.as_ref())
+            .with_exclude_filter(excl_reg.as_ref());
+        tokio::spawn(filtered.execute_test_suite())
+    });
 
     future::join_all(test_suite_tasks)
         .await
@@ -28,6 +43,7 @@ async fn execute_all(
         .collect()
 }
 
+/// Generate and print out the summary for the entire runt execution.
 fn summarize_all_results(
     opts: &Opts,
     all_results: Vec<Result<TestSuiteResult, RuntError>>,
@@ -79,14 +95,13 @@ fn run() -> Result<i32, RuntError> {
         ))
     })?;
 
-    let Config { ver, tests } =
-        toml::from_str(contents).map_err(|err| {
-            RuntError(format!(
-                "Failed to parse {}: {}",
-                conf_path.to_str().unwrap(),
-                err.to_string()
-            ))
-        })?;
+    let Config { ver, tests } = toml::from_str(contents).map_err(|err| {
+        RuntError(format!(
+            "Failed to parse {}: {}",
+            conf_path.to_str().unwrap(),
+            err.to_string()
+        ))
+    })?;
 
     // Check if the current `runt` matches the version specified in
     // the configuration.
@@ -99,10 +114,8 @@ fn run() -> Result<i32, RuntError> {
 
     // Run all the test suites.
     let all_results = execute_all(
-        tests
-            .into_iter()
-            .map(|c| c.into())
-            .collect::<Vec<_>>(),
+        tests.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
+        &opts,
     );
 
     // Summarize all the results.

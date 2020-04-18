@@ -73,11 +73,46 @@ async fn execute_test(
 }
 
 impl TestSuite {
+    /// Remove paths that match with the include filter.
+    pub fn with_exclude_filter(
+        mut self,
+        exclude: Option<&regex::Regex>,
+    ) -> Self {
+        if let Some(ex) = exclude {
+            self.paths = self
+                .paths
+                .into_iter()
+                .filter(|p| !ex.is_match(&p.to_string_lossy()))
+                .collect();
+        }
+        self
+    }
+
+    /// Remove paths that don't match with the include filter.
+    pub fn with_include_filter(
+        mut self,
+        include: Option<&regex::Regex>,
+    ) -> Self {
+        if let Some(incl) = include {
+            self.paths = self
+                .paths
+                .into_iter()
+                .filter(|p| incl.is_match(&p.to_string_lossy()))
+                .collect();
+        }
+        self
+    }
+    /// Execute the test suite and collect the results into a `TestSuiteResult`.
     pub async fn execute_test_suite(self) -> TestSuiteResult {
         use errors::RichResult;
         use errors::RichVec;
 
-        let TestSuite { paths, name, cmd, expect_dir } = self;
+        let TestSuite {
+            paths,
+            name,
+            cmd,
+            expect_dir,
+        } = self;
 
         // Create async tasks for all tests and get handle.
         let num_tests = paths.len();
