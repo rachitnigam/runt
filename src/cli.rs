@@ -27,16 +27,16 @@ pub struct Opts {
     pub save: bool,
 
     /// Post filters for test status.
-    #[structopt(short="o", long="only,status")]
+    #[structopt(short="o", long="only")]
     pub post_filter: Option<OnlyOpt>,
 
     /// Exclude matching tests.
     #[structopt(short="x", long="exclude")]
-    pub exclude_filter: Regex,
+    pub exclude_filter: Option<Regex>,
 
     /// Include matching tests.
     #[structopt(short="i", long="include")]
-    pub include_filter: Regex,
+    pub include_filter: Option<Regex>,
 }
 
 /// Possible values for the --only flag.

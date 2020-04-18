@@ -79,7 +79,7 @@ fn run() -> Result<i32, RuntError> {
         ))
     })?;
 
-    let Config { ver, suite_confs } =
+    let Config { ver, tests } =
         toml::from_str(contents).map_err(|err| {
             RuntError(format!(
                 "Failed to parse {}: {}",
@@ -99,7 +99,7 @@ fn run() -> Result<i32, RuntError> {
 
     // Run all the test suites.
     let all_results = execute_all(
-        suite_confs
+        tests
             .into_iter()
             .map(|c| c.into())
             .collect::<Vec<_>>(),

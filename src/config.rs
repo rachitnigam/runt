@@ -9,7 +9,7 @@ pub struct Config {
     /// Version of the runt tool this configuration is compatible with.
     pub ver: String,
     /// Test suite configurations.
-    pub suite_confs: Vec<SuiteConfig>,
+    pub tests: Vec<SuiteConfig>,
 }
 
 /// Configuration for a test suite.
@@ -18,7 +18,7 @@ pub struct SuiteConfig {
     /// Name of this TestSuite
     pub name: String,
     /// Paths of input files.
-    pub patterns: Vec<String>,
+    pub paths: Vec<String>,
     /// Command to execute. The pattern `{}` in this string is replaced with
     /// the matching path.
     pub cmd: String,
@@ -31,7 +31,7 @@ impl From<SuiteConfig> for TestSuite {
     /// list of errors.
     fn from(conf: SuiteConfig) -> Self {
         // Arcane sorcery
-        let all_paths = conf.patterns
+        let all_paths = conf.paths
             .into_iter()
             .map(|pattern| glob::glob(&pattern))
             .collect::<Result<Vec<_>, glob::PatternError>>()
