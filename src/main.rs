@@ -1,35 +1,25 @@
 mod cli;
+mod config;
 mod diff;
 mod errors;
 mod test_results;
-mod config;
+mod test_suite;
 
-use cli::{OnlyOpt, Opts};
-use config::{TestSuite};
+use cli::Opts;
+use config::Config;
 use errors::RuntError;
-use serde::Deserialize;
 use futures::future;
 use structopt::StructOpt;
 use test_results::{TestState, TestSuiteResult};
-
-/// Configuration for a single runt run.
-/// Tests suites for this runt configuration
-#[derive(Debug, Deserialize)]
-struct Config {
-    /// Version of the runt tool this configuration is compatible with.
-    ver: String,
-    /// Test suite configurations.
-    tests: Vec<TestSuite>,
-}
+use test_suite::TestSuite;
 
 #[tokio::main]
 async fn execute_all(
     suites: Vec<TestSuite>,
-    pre_filter: Option<&regex::Regex>,
 ) -> Vec<Result<TestSuiteResult, RuntError>> {
     let test_suite_tasks = suites
         .into_iter()
-        .map(|suite| tokio::spawn(suite.execute_test_suite(&pre_filter)));
+        .map(|suite| tokio::spawn(suite.execute_test_suite()));
 
     future::join_all(test_suite_tasks)
         .await
@@ -54,7 +44,7 @@ fn summarize_all_results(
                 TestState::Mismatch(..) => fail += 1,
             });
 
-            let mut results = res.only_results(&opts.only);
+            let mut results = res.only_results(&opts.post_filter);
             if opts.save {
                 results.save_all();
             }
@@ -89,13 +79,14 @@ fn run() -> Result<i32, RuntError> {
         ))
     })?;
 
-    let Config { ver, tests } = toml::from_str(contents).map_err(|err| {
-        RuntError(format!(
-            "Failed to parse {}: {}",
-            conf_path.to_str().unwrap(),
-            err.to_string()
-        ))
-    })?;
+    let Config { ver, suite_confs } =
+        toml::from_str(contents).map_err(|err| {
+            RuntError(format!(
+                "Failed to parse {}: {}",
+                conf_path.to_str().unwrap(),
+                err.to_string()
+            ))
+        })?;
 
     // Check if the current `runt` matches the version specified in
     // the configuration.
@@ -106,13 +97,13 @@ fn run() -> Result<i32, RuntError> {
     // Switch to directory containing runt.toml.
     std::env::set_current_dir(&opts.dir)?;
 
-    let pre_filter = match opts.only {
-        Some(OnlyOpt::Matches(ref reg)) => Some(reg),
-        _ => None
-    };
-
     // Run all the test suites.
-    let all_results = execute_all(tests, pre_filter);
+    let all_results = execute_all(
+        suite_confs
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<_>>(),
+    );
 
     // Summarize all the results.
     Ok(summarize_all_results(&opts, all_results))
