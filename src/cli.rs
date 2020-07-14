@@ -26,15 +26,19 @@ pub struct Opts {
     #[structopt(short, long)]
     pub save: bool,
 
-    /// Post filters for test status.
+    /// Filter out the reported test results based on test status
+    /// ("pass", "fail", "miss") or a regex for the test file path.
+    /// Applied after running the tests.
     #[structopt(short = "o", long = "only")]
     pub post_filter: Option<OnlyOpt>,
 
-    /// Exclude matching tests.
+    /// Exclude matching tests using a regex on "<suite-name>:<path>" strings
+    /// Applied before running tests.
     #[structopt(short = "x", long = "exclude")]
     pub exclude_filter: Option<String>,
 
-    /// Include matching tests.
+    /// Include matching tests using a regex on "<suite-name>:<path>" strings
+    /// Applied before running tests.
     #[structopt(short = "i", long = "include")]
     pub include_filter: Option<String>,
 }

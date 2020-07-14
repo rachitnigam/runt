@@ -79,10 +79,14 @@ impl TestSuite {
         exclude: Option<&regex::Regex>,
     ) -> Self {
         if let Some(ex) = exclude {
+            // Matches the regexe to <suite-name>:<path>
+            let name = self.name.clone();
             self.paths = self
                 .paths
                 .into_iter()
-                .filter(|p| !ex.is_match(&p.to_string_lossy()))
+                .filter(|p| {
+                    !ex.is_match(&(name.clone() + ":" + &p.to_string_lossy()))
+                })
                 .collect();
         }
         self
@@ -94,10 +98,14 @@ impl TestSuite {
         include: Option<&regex::Regex>,
     ) -> Self {
         if let Some(incl) = include {
+            // Matches the regexe to <suite-name>:<path>
+            let name = self.name.clone();
             self.paths = self
                 .paths
                 .into_iter()
-                .filter(|p| incl.is_match(&p.to_string_lossy()))
+                .filter(|p| {
+                    incl.is_match(&(name.clone() + ":" + &p.to_string_lossy()))
+                })
                 .collect();
         }
         self

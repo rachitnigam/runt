@@ -1,6 +1,14 @@
 Runt Changelog
 ==============
 
+0.2.5
+-----
+
+- Include and exclude regexes match on `<suite-name>:<path>` strings.
+  - To select a test suite, simply do `runt -i "suite name"`
+  - To select a path, simply do `runt -i "path"`
+  - To select a path for a test suite, do `runt -i "suite name:path"`
+
 0.2.4
 -----
 - Implement "pre-filters"

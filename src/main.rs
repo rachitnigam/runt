@@ -30,6 +30,7 @@ async fn execute_all(
         .map(|reg| Regex::new(&reg).expect("Invalid exclude regex"));
 
     let test_suite_tasks = suites.into_iter().map(|suite| {
+        // Add filters to each test suite.
         let filtered = suite
             .with_include_filter(incl_reg.as_ref())
             .with_exclude_filter(excl_reg.as_ref());

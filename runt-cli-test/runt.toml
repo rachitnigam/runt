@@ -1,5 +1,5 @@
 # Version of runt to be used with this configuration.
-ver = "0.2.4"
+ver = "0.2.5"
 
 [[tests]]
 name = "default output"
@@ -30,3 +30,8 @@ cmd = "../target/debug/runt ../cli-test -x input"
 name = "exclude regex & status"
 paths = [ "excl-status" ]
 cmd = "../target/debug/runt ../cli-test -x input -o fail"
+
+[[tests]]
+name = "include test suite"
+paths = [ "incl-test-suite" ]
+cmd = "../target/debug/runt ../cli-test -i \"Ls test\""
