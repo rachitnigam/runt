@@ -1,6 +1,13 @@
 Runt Changelog
 ==============
 
+0.2.6
+-----
+- Asynchronous test printing: Print out test suites as they finish instead
+  of waiting on all test suites.
+- Remove support for regex based `--only` filters. Pre-filters `--include`
+  and `--exclude` subsume them.
+
 0.2.5
 -----
 

@@ -1,5 +1,4 @@
 use crate::errors;
-use regex::Regex;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -52,8 +51,6 @@ pub enum OnlyOpt {
     Pass,
     /// Tests missing expect files.
     Missing,
-    /// Filter tests to run by matching a regex.
-    Matches(Regex),
 }
 
 impl std::str::FromStr for OnlyOpt {
@@ -64,9 +61,9 @@ impl std::str::FromStr for OnlyOpt {
             "fail" => Ok(OnlyOpt::Fail),
             "pass" => Ok(OnlyOpt::Pass),
             "miss" => Ok(OnlyOpt::Missing),
-            matches => Regex::new(matches)
-                .map_err(|err| errors::RuntError(err.to_string()))
-                .map(OnlyOpt::Matches),
+            _ => Err(errors::RuntError(
+                "Unknown --only filter. Expected: fail, pass, miss".to_string(),
+            )),
         }
     }
 }

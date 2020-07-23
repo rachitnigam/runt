@@ -1,7 +1,6 @@
 Cat tests (2 tests)
   ✗ fail - cat-test/b.txt
 
-1 missing
 1 failing
 ---CODE---
 1

@@ -8,66 +8,59 @@ mod test_suite;
 use cli::Opts;
 use config::Config;
 use errors::RuntError;
-use futures::future;
+use futures::io::{AllowStdIo, AsyncWriteExt};
+use futures::{stream::FuturesUnordered, stream::StreamExt};
 use regex::Regex;
+use std::io::{self, BufWriter};
 use structopt::StructOpt;
-use test_results::{TestState, TestSuiteResult};
 use test_suite::TestSuite;
 
 /// Execute the runt configuration and generate results.
 #[tokio::main]
 async fn execute_all(
     suites: Vec<TestSuite>,
-    opts: &Opts,
-) -> Vec<Result<TestSuiteResult, RuntError>> {
-    let incl_reg = opts
-        .include_filter
-        .as_ref()
-        .map(|reg| Regex::new(&reg).expect("Invalid include regex"));
-    let excl_reg = opts
-        .exclude_filter
-        .as_ref()
-        .map(|reg| Regex::new(&reg).expect("Invalid exclude regex"));
-
-    let test_suite_tasks = suites.into_iter().map(|suite| {
-        // Add filters to each test suite.
-        let filtered = suite
-            .with_include_filter(incl_reg.as_ref())
-            .with_exclude_filter(excl_reg.as_ref());
-        tokio::spawn(filtered.execute_test_suite())
-    });
-
-    future::join_all(test_suite_tasks)
-        .await
-        .into_iter()
-        .map(|res| res.map_err(|err| RuntError(err.to_string())))
-        .collect()
-}
-
-/// Generate and print out the summary for the entire runt execution.
-fn summarize_all_results(
-    opts: &Opts,
-    all_results: Vec<Result<TestSuiteResult, RuntError>>,
-) -> i32 {
+    incl_reg: Option<Regex>,
+    excl_reg: Option<Regex>,
+    opts: cli::Opts,
+) -> Result<i32, errors::RuntError> {
     use colored::*;
 
-    // Collect summary statistics while printing this test suite.
-    let (mut pass, mut fail, mut miss) = (0, 0, 0);
-    for suite_res in all_results {
-        if let Ok(res) = suite_res {
-            res.2.iter().for_each(|res| match res.state {
-                TestState::Correct => pass += 1,
-                TestState::Missing(..) => miss += 1,
-                TestState::Mismatch(..) => fail += 1,
-            });
+    let test_suite_tasks = suites
+        .into_iter()
+        .map(|suite| {
+            // Add filters to each test suite.
+            let filtered = suite
+                .with_include_filter(incl_reg.as_ref())
+                .with_exclude_filter(excl_reg.as_ref());
+            tokio::spawn(filtered.execute_test_suite())
+        })
+        .collect::<FuturesUnordered<_>>();
 
-            let mut results = res.only_results(&opts.post_filter);
-            if opts.save {
-                results.save_all();
+    // Collect summary statistics while printing this test suite.
+    let (mut pass, mut fail, mut miss): (i32, i32, i32) = (0, 0, 0);
+    let mut task = test_suite_tasks.into_future();
+    // Buffered writing for stdout.
+    let stdout = io::stdout();
+    let mut handle = AllowStdIo::new(BufWriter::new(stdout));
+    loop {
+        match task.await {
+            (None, _) => break,
+            (Some(res), nxt) => {
+                let mut results = res?.only_results(&opts.post_filter);
+                // Save if needed.
+                if opts.save {
+                    results.save_all();
+                }
+                let (buf, p, f, m) = results.test_suite_results(&opts);
+                // Write the strings
+                handle.write_all(buf.as_bytes()).await?;
+                handle.flush().await?;
+                // Update the statistics.
+                pass += p;
+                fail += f;
+                miss += m;
+                task = nxt.into_future();
             }
-            results.print_test_suite_results(&opts);
-        } else if let Err(err) = suite_res {
-            println!("Failed to execute test suite: {}", err);
         }
     }
 
@@ -81,7 +74,7 @@ fn summarize_all_results(
     if pass != 0 {
         println!("{}", &format!("{} passing", pass).green().bold());
     }
-    fail
+    Ok(fail)
 }
 
 fn run() -> Result<i32, RuntError> {
@@ -110,17 +103,27 @@ fn run() -> Result<i32, RuntError> {
         return Err(RuntError(format!("Runt version mismatch. Configuration requires: {}, tool version: {}.\nRun `cargo install runt` to get the latest version of runt.", ver, env!("CARGO_PKG_VERSION"))));
     }
 
+    // Get the include and exclude regexes.
+    let incl_reg: Option<Regex> = opts
+        .include_filter
+        .as_ref()
+        .map(|reg| Regex::new(&reg).expect("Invalid --include regex"));
+
+    let excl_reg = opts
+        .exclude_filter
+        .as_ref()
+        .map(|reg| Regex::new(&reg).expect("Invalid --exclude regex"));
+
     // Switch to directory containing runt.toml.
     std::env::set_current_dir(&opts.dir)?;
 
     // Run all the test suites.
-    let all_results = execute_all(
+    execute_all(
         tests.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
-        &opts,
-    );
-
-    // Summarize all the results.
-    Ok(summarize_all_results(&opts, all_results))
+        incl_reg,
+        excl_reg,
+        opts,
+    )
 }
 
 fn main() {

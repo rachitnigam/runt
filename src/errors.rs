@@ -29,6 +29,12 @@ impl From<std::io::Error> for RuntError {
     }
 }
 
+impl From<tokio::task::JoinError> for RuntError {
+    fn from(err: tokio::task::JoinError) -> Self {
+        RuntError(err.to_string())
+    }
+}
+
 // Helper method to collapse nested Results
 pub trait RichResult<T, E> {
     fn collapse(self) -> Result<T, E>;

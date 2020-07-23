@@ -123,10 +123,7 @@ impl TestSuiteResult {
                     (O::Fail, TS::Mismatch(..)) => true,
                     (O::Pass, TS::Correct) => true,
                     (O::Missing, TS::Missing(..)) => true,
-                    (O::Matches(_), _)
-                    | (O::Fail, _)
-                    | (O::Pass, _)
-                    | (O::Missing, _) => false,
+                    (O::Fail, _) | (O::Pass, _) | (O::Missing, _) => false,
                 };
             }
             true
@@ -135,24 +132,34 @@ impl TestSuiteResult {
     }
 
     /// Print the results of running this test suite.
-    pub fn print_test_suite_results(&self, opts: &cli::Opts) -> &Self {
+    pub fn test_suite_results(
+        &self,
+        opts: &cli::Opts,
+    ) -> (String, i32, i32, i32) {
         use colored::*;
         let TestSuiteResult(name, num_tests, results, errors) = self;
 
-        if !results.is_empty() || !errors.is_empty() {
-            println!("{} ({} tests)", name.bold(), num_tests);
-            results
-                .iter()
-                .for_each(|info| println!("  {}", info.report_str(opts.diff)));
+        let mut buf = String::with_capacity(500);
+        let (mut pass, mut fail, mut miss) = (0, 0, 0);
 
-            if !errors.is_empty() {
-                println!("  {}", "runt errors".red());
-                errors
-                    .iter()
-                    .for_each(|info| println!("    {}", info.to_string().red()))
-            }
+        if !results.is_empty() {
+            buf.push_str(&format!("{} ({} tests)\n", name.bold(), num_tests));
+            results.iter().for_each(|info| {
+                buf.push_str(&format!("  {}\n", info.report_str(opts.diff)));
+                match info.state {
+                    TestState::Correct => pass += 1,
+                    TestState::Missing(..) => miss += 1,
+                    TestState::Mismatch(..) => fail += 1,
+                }
+            });
         }
-        self
+        if !errors.is_empty() {
+            buf.push_str(&format!("  {}\n", "runt errors".red()));
+            errors.iter().for_each(|info| {
+                buf.push_str(&format!("    {}\n", info.to_string().red()))
+            });
+        }
+        (buf.to_string(), pass, fail, miss)
     }
 
     /// Save results from this TestSuite.
