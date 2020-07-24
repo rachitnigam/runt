@@ -34,7 +34,13 @@ impl PrintInfo<'_> {
         let (diff_sign, col_line) = match node {
             Mode::Add => ("+".green(), line.green()),
             Mode::Rem => ("-".red(), line.red()),
-            Mode::Same => (" ".normal(), line.dimmed()),
+            Mode::Same => {
+                let trimmed = line
+                    .get(..80)
+                    .map(|sl| sl.to_owned() + " ...")
+                    .unwrap_or(line.to_string());
+                (" ".normal(), trimmed.dimmed())
+            }
         };
         format!("{:>5} {:>3}│{} {}\n", line_a, line_b, diff_sign, col_line)
     }

@@ -1,6 +1,10 @@
 Runt Changelog
 ==============
 
+0.2.7
+-----
+- Diff mode: Trim lines that were not changed to 80 characters.
+
 0.2.6
 -----
 - Asynchronous test printing: Print out test suites as they finish instead
