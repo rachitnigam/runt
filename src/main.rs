@@ -9,7 +9,9 @@ use cli::Opts;
 use config::Config;
 use errors::RuntError;
 use futures::io::{AllowStdIo, AsyncWriteExt};
-use futures::{stream::FuturesUnordered, stream::StreamExt};
+use futures::{
+    stream::{self, StreamExt},
+};
 use regex::Regex;
 use std::io::{self, BufWriter};
 use structopt::StructOpt;
@@ -25,8 +27,7 @@ async fn execute_all(
 ) -> Result<i32, errors::RuntError> {
     use colored::*;
 
-    let test_suite_tasks = suites
-        .into_iter()
+    let test_suite_tasks = stream::iter(suites)
         .map(|suite| {
             // Add filters to each test suite.
             let filtered = suite
@@ -34,7 +35,8 @@ async fn execute_all(
                 .with_exclude_filter(excl_reg.as_ref());
             tokio::spawn(filtered.execute_test_suite())
         })
-        .collect::<FuturesUnordered<_>>();
+        // Run at most two test suites at a time.
+        .buffer_unordered(2);
 
     // Collect summary statistics while printing this test suite.
     let (mut pass, mut fail, mut miss): (i32, i32, i32) = (0, 0, 0);

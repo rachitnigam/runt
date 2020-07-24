@@ -2,7 +2,9 @@ use crate::errors;
 use crate::test_results;
 
 use errors::RuntError;
-use futures::future;
+use futures::{
+    future,
+};
 use serde::Deserialize;
 use std::path::PathBuf;
 use test_results::{TestResult, TestState, TestSuiteResult};
@@ -124,6 +126,17 @@ impl TestSuite {
 
         // Create async tasks for all tests and get handle.
         let num_tests = paths.len();
+
+        // XXX(rachit): Code to buffer number of tests being run in a test
+        // suite.
+        /*let handles = stream::iter(paths)
+            .map(|path| {
+                let cmd = construct_command(&cmd, &path);
+                tokio::spawn(execute_test(cmd, path, expect_dir.clone()))
+            })
+            .buffer_unordered(8)
+            .collect::<Vec<_>>();*/
+
         let handles = paths.into_iter().map(|path| {
             let cmd = construct_command(&cmd, &path);
             tokio::spawn(execute_test(cmd, path, expect_dir.clone()))

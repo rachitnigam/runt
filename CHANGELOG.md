@@ -3,6 +3,8 @@ Runt Changelog
 
 0.2.7
 -----
+- Internal: Use `buffered_unordered` to limit two parallel test suite runs at
+  a time.
 - Diff mode: Trim lines that were not changed to 80 characters.
 
 0.2.6
