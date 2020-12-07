@@ -1,5 +1,5 @@
 # Version of runt to be used with this configuration.
-ver = "0.2.6"
+ver = "0.2.7"
 
 # Configuration for each test suite. File paths are relative to the folder
 # containing runt.toml.

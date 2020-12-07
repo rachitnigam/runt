@@ -8,17 +8,17 @@ mod test_suite;
 use cli::Opts;
 use config::Config;
 use errors::RuntError;
-use futures::io::{AllowStdIo, AsyncWriteExt};
 use futures::{
-    stream::{self, StreamExt},
+    io::{AllowStdIo, AsyncWriteExt},
+    stream, StreamExt,
 };
 use regex::Regex;
 use std::io::{self, BufWriter};
 use structopt::StructOpt;
 use test_suite::TestSuite;
+use tokio::runtime;
 
 /// Execute the runt configuration and generate results.
-#[tokio::main]
 async fn execute_all(
     suites: Vec<TestSuite>,
     incl_reg: Option<Regex>,
@@ -27,7 +27,11 @@ async fn execute_all(
 ) -> Result<i32, errors::RuntError> {
     use colored::*;
 
-    let test_suite_tasks = stream::iter(suites)
+    // spawn as many suite managers in parallel as possible.
+    // the number of actual worker tasks is still limited to
+    // `opts.job_limit`.
+    let num_suites = suites.len();
+    let mut test_suite_tasks = stream::iter(suites)
         .map(|suite| {
             // Add filters to each test suite.
             let filtered = suite
@@ -35,35 +39,28 @@ async fn execute_all(
                 .with_exclude_filter(excl_reg.as_ref());
             tokio::spawn(filtered.execute_test_suite())
         })
-        // Run at most two test suites at a time.
-        .buffer_unordered(2);
+        .buffered(num_suites);
 
     // Collect summary statistics while printing this test suite.
     let (mut pass, mut fail, mut miss): (i32, i32, i32) = (0, 0, 0);
-    let mut task = test_suite_tasks.into_future();
     // Buffered writing for stdout.
     let stdout = io::stdout();
     let mut handle = AllowStdIo::new(BufWriter::new(stdout));
-    loop {
-        match task.await {
-            (None, _) => break,
-            (Some(res), nxt) => {
-                let mut results = res?.only_results(&opts.post_filter);
-                // Save if needed.
-                if opts.save {
-                    results.save_all();
-                }
-                let (buf, p, f, m) = results.test_suite_results(&opts);
-                // Write the strings
-                handle.write_all(buf.as_bytes()).await?;
-                handle.flush().await?;
-                // Update the statistics.
-                pass += p;
-                fail += f;
-                miss += m;
-                task = nxt.into_future();
-            }
+
+    while let Some(res) = test_suite_tasks.next().await {
+        let mut results = res?.only_results(&opts.post_filter);
+        // Save if needed.
+        if opts.save {
+            results.save_all();
         }
+        let (buf, p, f, m) = results.test_suite_results(&opts);
+        // Write the strings
+        handle.write_all(buf.as_bytes()).await?;
+        handle.flush().await?;
+        // Update the statistics.
+        pass += p;
+        fail += f;
+        miss += m;
     }
 
     println!();
@@ -119,13 +116,20 @@ fn run() -> Result<i32, RuntError> {
     // Switch to directory containing runt.toml.
     std::env::set_current_dir(&opts.dir)?;
 
+    let mut runtime = runtime::Builder::new()
+        .threaded_scheduler()
+        .enable_all()
+        .core_threads(opts.jobs_limit.unwrap_or(num_cpus::get()))
+        .build()
+        .unwrap();
+
     // Run all the test suites.
-    execute_all(
+    runtime.block_on(execute_all(
         tests.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
         incl_reg,
         excl_reg,
         opts,
-    )
+    ))
 }
 
 fn main() {

@@ -40,6 +40,9 @@ pub struct Opts {
     /// Applied before running tests.
     #[structopt(short = "i", long = "include")]
     pub include_filter: Option<String>,
+
+    #[structopt(short = "j", long = "jobs")]
+    pub jobs_limit: Option<usize>,
 }
 
 /// Possible values for the --only flag.
