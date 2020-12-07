@@ -2,13 +2,11 @@ use crate::errors;
 use crate::test_results;
 
 use errors::RuntError;
-use futures::{
-    future,
-};
+use futures::future;
 use serde::Deserialize;
 use std::path::PathBuf;
+use std::{fs, process::Command};
 use test_results::{TestResult, TestState, TestSuiteResult};
-use tokio::process::Command;
 
 /// Configuration for a test suite.
 #[derive(Debug, Deserialize)]
@@ -33,13 +31,16 @@ fn construct_command(cmd: &str, path: &PathBuf) -> Command {
     cmd
 }
 
-/// Create a task to asynchronously execute this test.
+/// Create a task to asynchronously execute this test. We use
+/// std library fs::* and command::* so that there is a 1-to-1
+/// correspondence between tokio threads and spawned processes.
+/// This lets us control the number of parallel running processes.
 async fn execute_test(
     mut cmd: Command,
     path: PathBuf,
     expect_dir: Option<PathBuf>,
 ) -> Result<TestResult, RuntError> {
-    let out = cmd.output().await.map_err(|err| {
+    let out = cmd.output().map_err(|err| {
         RuntError(format!("{}: {}", path.to_str().unwrap(), err.to_string()))
     })?;
 
@@ -52,8 +53,7 @@ async fn execute_test(
         test_results::to_expect_string(status, &stdout, &stderr);
     // Open expect file for comparison.
     let expect_path = test_results::expect_file(expect_dir, &path);
-    let state = tokio::fs::read_to_string(expect_path.clone())
-        .await
+    let state = fs::read_to_string(expect_path.clone())
         .map(|contents| {
             if contents == expect_string {
                 TestState::Correct
@@ -112,6 +112,7 @@ impl TestSuite {
         }
         self
     }
+
     /// Execute the test suite and collect the results into a `TestSuiteResult`.
     pub async fn execute_test_suite(self) -> TestSuiteResult {
         use errors::RichResult;
@@ -127,16 +128,7 @@ impl TestSuite {
         // Create async tasks for all tests and get handle.
         let num_tests = paths.len();
 
-        // XXX(rachit): Code to buffer number of tests being run in a test
-        // suite.
-        /*let handles = stream::iter(paths)
-            .map(|path| {
-                let cmd = construct_command(&cmd, &path);
-                tokio::spawn(execute_test(cmd, path, expect_dir.clone()))
-            })
-            .buffer_unordered(8)
-            .collect::<Vec<_>>();*/
-
+        // spawn a thread for each command to run
         let handles = paths.into_iter().map(|path| {
             let cmd = construct_command(&cmd, &path);
             tokio::spawn(execute_test(cmd, path, expect_dir.clone()))

@@ -477,6 +477,7 @@ dependencies = [
  "difference",
  "futures",
  "glob",
+ "num_cpus",
  "regex",
  "serde",
  "structopt",
