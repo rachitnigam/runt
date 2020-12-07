@@ -41,6 +41,8 @@ pub struct Opts {
     #[structopt(short = "i", long = "include")]
     pub include_filter: Option<String>,
 
+    /// Limit the number of jobs to run in parallel. Defaults to number of logical
+    /// cpus.
     #[structopt(short = "j", long = "jobs")]
     pub jobs_limit: Option<usize>,
 }

@@ -1,6 +1,14 @@
 Runt Changelog
 ==============
 
+0.2.8
+-----
+- Added `--jobs` flag to limit the number of jobs that can run in parallel. Defaults
+to number of logical cpus.
+- Internal: Use std library sequential forms of `fs::*` and `process::command` 
+instead of `tokio` equivalents so that the number of threads corresponds one-to-one
+with spawned processes.
+
 0.2.7
 -----
 - Internal: Use `buffered_unordered` to limit two parallel test suite runs at
