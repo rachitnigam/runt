@@ -1,5 +1,5 @@
 # Version of runt to be used with this configuration.
-ver = "0.2.6"
+ver = "0.2.7"
 
 [[tests]]
 name = "default output"
