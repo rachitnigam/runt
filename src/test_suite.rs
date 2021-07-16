@@ -4,6 +4,7 @@ use crate::test_results;
 use errors::RuntError;
 use futures::future;
 use serde::Deserialize;
+use std::path::Path;
 use std::path::PathBuf;
 use std::{fs, process::Command};
 use test_results::{TestResult, TestState, TestSuiteResult};
@@ -24,7 +25,7 @@ pub struct TestSuite {
 
 /// Construct a command to run by replacing all occurances of `{}` with that
 /// matching path.
-fn construct_command(cmd: &str, path: &PathBuf) -> Command {
+fn construct_command(cmd: &str, path: &Path) -> Command {
     let concrete_command = cmd.replace("{}", path.to_str().unwrap());
     let mut cmd = Command::new("sh");
     cmd.arg("-c").arg(concrete_command);

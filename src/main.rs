@@ -119,7 +119,7 @@ fn run() -> Result<i32, RuntError> {
     let mut runtime = runtime::Builder::new()
         .threaded_scheduler()
         .enable_all()
-        .core_threads(opts.jobs_limit.unwrap_or(num_cpus::get()))
+        .core_threads(opts.jobs_limit.unwrap_or_else(num_cpus::get))
         .build()
         .unwrap();
 

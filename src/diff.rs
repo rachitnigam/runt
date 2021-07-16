@@ -1,5 +1,4 @@
 use colored::Colorize;
-use difference;
 use difference::{Changeset, Difference};
 use std::fmt;
 
@@ -38,7 +37,7 @@ impl PrintInfo<'_> {
                 let trimmed = line
                     .get(..80)
                     .map(|sl| sl.to_owned() + " ...")
-                    .unwrap_or(line.to_string());
+                    .unwrap_or_else(|| line.to_string());
                 (" ".normal(), trimmed.dimmed())
             }
         };

@@ -1,5 +1,6 @@
 use crate::cli;
 use crate::errors::RuntError;
+use std::path::Path;
 use std::path::PathBuf;
 
 /// Track the state of TestResult.
@@ -79,7 +80,7 @@ impl TestResult {
                 }
                 if show_diff {
                     let diff = diff::gen_diff(&"".to_string(), &expect_string);
-                    buf.push_str("\n");
+                    buf.push('\n');
                     buf.push_str(&diff);
                 }
             }
@@ -95,7 +96,7 @@ impl TestResult {
                 }
                 if show_diff {
                     let diff = diff::gen_diff(&contents, &expect_string);
-                    buf.push_str("\n");
+                    buf.push('\n');
                     buf.push_str(&diff);
                 }
             }
@@ -159,7 +160,7 @@ impl TestSuiteResult {
                 buf.push_str(&format!("    {}\n", info.to_string().red()))
             });
         }
-        (buf.to_string(), pass, fail, miss)
+        (buf, pass, fail, miss)
     }
 
     /// Save results from this TestSuite.
@@ -202,7 +203,7 @@ pub fn to_expect_string(status: i32, stdout: &str, stderr: &str) -> String {
 }
 
 /// Path of the expect file.
-pub fn expect_file(expect_dir: Option<PathBuf>, path: &PathBuf) -> PathBuf {
+pub fn expect_file(expect_dir: Option<PathBuf>, path: &Path) -> PathBuf {
     expect_dir
         .map(|base| base.join(path.file_name().unwrap()))
         .unwrap_or_else(|| path.to_path_buf())
