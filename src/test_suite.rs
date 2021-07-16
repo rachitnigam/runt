@@ -2,14 +2,13 @@ use crate::{errors, test_results};
 
 use errors::RuntError;
 use futures::future;
-use serde::Deserialize;
 use std::path::Path;
 use std::path::PathBuf;
 use std::{fs, process::Command};
 use test_results::{TestResult, TestState, TestSuiteResult};
 
 /// Configuration for a test suite.
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct TestSuite {
     /// Name of this TestSuite
     pub name: String,
@@ -178,6 +177,6 @@ impl TestSuite {
 
         let (results, errors) = resolved.partition_results();
 
-        TestSuiteResult(name.clone(), num_tests as i32, results, errors)
+        TestSuiteResult::new(name.clone(), num_tests as i32, results, errors)
     }
 }

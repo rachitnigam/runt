@@ -106,19 +106,38 @@ impl TestResult {
 }
 
 /// Result of running a TestSuite.
-pub struct TestSuiteResult(
-    pub String,          // Name of the test suite.
-    pub i32,             // Number of matching paths.
-    pub Vec<TestResult>, // TestResult for successfully executed tests.
-    pub Vec<RuntError>,  // Errors while running this suite.
-);
+pub struct TestSuiteResult {
+    // Name of the test suite.
+    pub name: String,
+    // Number of matching paths.
+    pub num_tests: i32,
+    // TestResult for successfully executed tests.
+    pub results: Vec<TestResult>,
+    // Errors while running this suite.
+    pub errors: Vec<RuntError>,
+}
 
 impl TestSuiteResult {
+    /// Construct a new instance of TestSuiteResult
+    pub fn new(
+        name: String,
+        num_tests: i32,
+        results: Vec<TestResult>,
+        errors: Vec<RuntError>,
+    ) -> Self {
+        Self {
+            name,
+            num_tests,
+            results,
+            errors,
+        }
+    }
+
     /// Filter out the test suite results using the test statuses.
     pub fn only_results(mut self, only: &Option<cli::OnlyOpt>) -> Self {
         use cli::OnlyOpt as O;
         use TestState as TS;
-        self.2.retain(|el| {
+        self.results.retain(|el| {
             if let (Some(only), TestResult { state, .. }) = (only, el) {
                 return match (only, state) {
                     (O::Fail, TS::Mismatch(..)) => true,
@@ -138,7 +157,12 @@ impl TestSuiteResult {
         opts: &cli::Opts,
     ) -> (String, i32, i32, i32) {
         use colored::*;
-        let TestSuiteResult(name, num_tests, results, errors) = self;
+        let TestSuiteResult {
+            name,
+            num_tests,
+            results,
+            errors,
+        } = self;
 
         let mut buf = String::with_capacity(500);
         let (mut pass, mut fail, mut miss) = (0, 0, 0);
@@ -165,10 +189,10 @@ impl TestSuiteResult {
 
     /// Save results from this TestSuite.
     pub fn save_all(&mut self) -> &mut Self {
-        let TestSuiteResult(_, _, results, _) = self;
+        let TestSuiteResult { results, .. } = self;
         for result in results {
             if let Err(e) = result.save_results() {
-                self.3.push(e);
+                self.errors.push(e);
             }
         }
         self
