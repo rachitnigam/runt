@@ -12,7 +12,8 @@ Ls test (1 tests)
         3│+ error-test
         4│+ ls-test
         5│+ runt.toml
-        6│+ 
+        6│+ timeout-test
+        7│+ 
          ~
 
 2 missing

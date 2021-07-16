@@ -5,9 +5,11 @@ Ls test (1 tests)
   ? miss - ls-test/input.txt
 Error test (1 tests)
   ✓ pass - error-test/input.txt
+Timeout test (1 tests)
+  ✗ timeout - timeout-test/input.txt
 
 2 missing
-1 failing
+2 failing (1 timeouts)
 1 passing
 ---CODE---
-1
+2
