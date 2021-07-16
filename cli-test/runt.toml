@@ -12,6 +12,8 @@ paths = [ "cat-test/*.txt" ]
 cmd = "sleep 1; cat {}"
 # (Optional) Directory to store the generated .expect files.
 expect_dir = "cat-out/"
+# (Optional) Timeout for tests in seconds. Defaults to 120 seconds.
+timeout = 120
 
 [[tests]]
 name = "Ls test"
@@ -22,3 +24,11 @@ cmd = "sleep 2; cat {} | ls"
 name = "Error test"
 paths = ["error-test/input.txt"]
 cmd = "sleep 3; echo error message 1>&2 && exit 1"
+
+[[tests]]
+name = "Timeout test"
+cmd = """
+sleep 100
+"""
+paths = ["timeout-test/input.txt"]
+timeout = 2 # Timeout of two seconds

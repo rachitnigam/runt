@@ -35,9 +35,26 @@ impl From<tokio::task::JoinError> for RuntError {
     }
 }
 
+impl From<tokio::time::error::Elapsed> for RuntError {
+    fn from(err: tokio::time::error::Elapsed) -> Self {
+        RuntError(err.to_string())
+    }
+}
+
 // Helper method to collapse nested Results
 pub trait RichResult<T, E> {
     fn collapse(self) -> Result<T, E>;
+}
+
+impl<T, E> RichResult<T, E> for Result<Result<Result<T, E>, E>, E> {
+    fn collapse(self) -> Result<T, E> {
+        match self {
+            Ok(Ok(Ok(v))) => Ok(v),
+            Ok(Ok(Err(e))) => Err(e),
+            Ok(Err(e)) => Err(e),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 impl<T, E> RichResult<T, E> for Result<Result<T, E>, E> {

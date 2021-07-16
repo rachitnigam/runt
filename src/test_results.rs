@@ -1,11 +1,12 @@
 use crate::cli;
 use crate::errors::RuntError;
-use std::path::Path;
 use std::path::PathBuf;
 
 /// Track the state of TestResult.
 #[derive(Debug, PartialEq)]
 pub enum TestState {
+    /// The test timed out.
+    Timeout,
     /// The comparison succeeded.
     Correct,
     /// The .expect file is missing. Contains the generated expectation string.
@@ -27,15 +28,6 @@ pub struct TestResult {
     /// Location of the expect string.
     pub expect_path: PathBuf,
 
-    /// Return status of the test.
-    pub status: i32,
-
-    /// STDOUT captured from the test.
-    pub stdout: String,
-
-    /// STRERR captured from the test.
-    pub stderr: String,
-
     /// Result of comparison
     pub state: TestState,
 
@@ -49,7 +41,7 @@ impl TestResult {
         use std::fs;
         use TestState as TS;
         match &self.state {
-            TS::Correct => Ok(()),
+            TS::Correct | TS::Timeout => Ok(()),
             TS::Missing(expect) | TS::Mismatch(expect, _) => {
                 self.saved = true;
                 fs::write(&self.expect_path, expect).map_err(|err| {
@@ -83,6 +75,10 @@ impl TestResult {
                     buf.push('\n');
                     buf.push_str(&diff);
                 }
+            }
+            TS::Timeout => {
+                buf.push_str(&"✗ timeout - ".red().to_string());
+                buf.push_str(&path_str.red().to_string());
             }
             TS::Correct => {
                 buf.push_str(&"✓ pass - ".green().to_string());
@@ -155,7 +151,7 @@ impl TestSuiteResult {
     pub fn test_suite_results(
         &self,
         opts: &cli::Opts,
-    ) -> (String, i32, i32, i32) {
+    ) -> (String, i32, i32, i32, i32) {
         use colored::*;
         let TestSuiteResult {
             name,
@@ -165,7 +161,7 @@ impl TestSuiteResult {
         } = self;
 
         let mut buf = String::with_capacity(500);
-        let (mut pass, mut fail, mut miss) = (0, 0, 0);
+        let (mut pass, mut fail, mut miss, mut timeout) = (0, 0, 0, 0);
 
         if !results.is_empty() {
             buf.push_str(&format!("{} ({} tests)\n", name.bold(), num_tests));
@@ -175,6 +171,7 @@ impl TestSuiteResult {
                     TestState::Correct => pass += 1,
                     TestState::Missing(..) => miss += 1,
                     TestState::Mismatch(..) => fail += 1,
+                    TestState::Timeout => timeout += 1,
                 }
             });
         }
@@ -184,7 +181,7 @@ impl TestSuiteResult {
                 buf.push_str(&format!("    {}\n", info.to_string().red()))
             });
         }
-        (buf, pass, fail, miss)
+        (buf, pass, fail, miss, timeout)
     }
 
     /// Save results from this TestSuite.
@@ -197,40 +194,4 @@ impl TestSuiteResult {
         }
         self
     }
-}
-
-/// Format the output of the test into an expect string.
-/// An expect string is of the form:
-/// <contents of STDOUT>
-/// ---CODE---
-/// <exit code>
-/// ---STDERR---
-/// <contents of STDERR>
-pub fn to_expect_string(status: i32, stdout: &str, stderr: &str) -> String {
-    let mut buf = String::new();
-    if !stdout.is_empty() {
-        buf.push_str(stdout);
-    }
-
-    if status != 0 {
-        buf.push_str("---CODE---\n");
-        buf.push_str(format!("{}", status).as_str());
-        buf.push('\n');
-    }
-
-    if !stderr.is_empty() {
-        buf.push_str("---STDERR---\n");
-        buf.push_str(stderr);
-    }
-
-    buf
-}
-
-/// Path of the expect file.
-pub fn expect_file(expect_dir: Option<PathBuf>, path: &Path) -> PathBuf {
-    expect_dir
-        .map(|base| base.join(path.file_name().unwrap()))
-        .unwrap_or_else(|| path.to_path_buf())
-        .as_path()
-        .with_extension("expect")
 }

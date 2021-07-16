@@ -24,6 +24,8 @@ pub struct SuiteConfig {
     pub cmd: String,
     /// Optional directory to store the generated .expect files.
     pub expect_dir: Option<PathBuf>,
+    /// Optional timeout
+    pub timeout: Option<u64>,
 }
 
 impl From<SuiteConfig> for TestSuite {
@@ -47,6 +49,7 @@ impl From<SuiteConfig> for TestSuite {
             paths: all_paths,
             cmd: conf.cmd,
             expect_dir: conf.expect_dir,
+            timeout: conf.timeout,
         }
     }
 }

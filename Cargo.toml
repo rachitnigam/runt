@@ -26,4 +26,4 @@ features = ["derive"]
 
 [dependencies.tokio]
 version = "1"
-features = ["rt-multi-thread", "process", "macros", "fs"]
+features = ["rt-multi-thread", "process", "macros", "fs", "time"]

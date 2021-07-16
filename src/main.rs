@@ -2,6 +2,7 @@ mod cli;
 mod config;
 mod diff;
 mod errors;
+mod test;
 mod test_results;
 mod test_suite;
 
@@ -42,7 +43,7 @@ async fn execute_all(
         .buffered(num_suites);
 
     // Collect summary statistics while printing this test suite.
-    let (mut pass, mut fail, mut miss): (i32, i32, i32) = (0, 0, 0);
+    let (mut pass, mut fail, mut miss, mut timeout) = (0, 0, 0, 0);
     // Buffered writing for stdout.
     let stdout = io::stdout();
     let mut handle = AllowStdIo::new(BufWriter::new(stdout));
@@ -53,14 +54,15 @@ async fn execute_all(
         if opts.save {
             results.save_all();
         }
-        let (buf, p, f, m) = results.test_suite_results(&opts);
+        let (buf, p, f, m, t) = results.test_suite_results(&opts);
         // Write the strings
         handle.write_all(buf.as_bytes()).await?;
         handle.flush().await?;
         // Update the statistics.
         pass += p;
-        fail += f;
+        fail += f + t;
         miss += m;
+        timeout += t;
     }
 
     println!();
@@ -68,7 +70,12 @@ async fn execute_all(
         println!("{}", &format!("{} missing", miss).yellow().bold())
     }
     if fail != 0 {
-        println!("{}", &format!("{} failing", fail).red().bold());
+        println!(
+            "{}",
+            &format!("{} failing ({} timeouts)", fail, timeout)
+                .red()
+                .bold()
+        );
     }
     if pass != 0 {
         println!("{}", &format!("{} passing", pass).green().bold());
@@ -76,6 +83,7 @@ async fn execute_all(
     Ok(fail)
 }
 
+/// Print out the commands to be run to execute the test suites.
 fn dry_run(
     suites: Vec<TestSuite>,
     incl_reg: Option<Regex>,
