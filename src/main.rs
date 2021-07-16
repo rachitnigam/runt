@@ -70,12 +70,12 @@ async fn execute_all(
         println!("{}", &format!("{} missing", miss).yellow().bold())
     }
     if fail != 0 {
-        println!(
-            "{}",
-            &format!("{} failing ({} timeouts)", fail, timeout)
-                .red()
-                .bold()
-        );
+        print!("{}", &format!("{} failing", fail).red().bold());
+        if timeout == 0 {
+            println!();
+        } else {
+            println!("{}", &format!(" ({} timeouts)", timeout).red().bold());
+        }
     }
     if pass != 0 {
         println!("{}", &format!("{} passing", pass).green().bold());
