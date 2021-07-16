@@ -1,11 +1,16 @@
 Runt Changelog
 ==============
 
+Unreleased
+-----
+- Added `-n` flag to print out the commands to be run to execute a test.
+- Internal: Update `tokio` library to stable version 1.
+
 0.2.8
 -----
 - Added `--jobs` flag to limit the number of jobs that can run in parallel. Defaults
 to number of logical cpus.
-- Internal: Use std library sequential forms of `fs::*` and `process::command` 
+- Internal: Use std library sequential forms of `fs::*` and `process::command`
 instead of `tokio` equivalents so that the number of threads corresponds one-to-one
 with spawned processes.
 

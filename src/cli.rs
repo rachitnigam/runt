@@ -25,6 +25,12 @@ pub struct Opts {
     #[structopt(short, long)]
     pub save: bool,
 
+    /// Print out the commands to be run for each test case.
+    /// Warning: Will probably generate a lot of text unless used with
+    /// --include or --exclude
+    #[structopt(short = "n", long)]
+    pub dry_run: bool,
+
     /// Filter out the reported test results based on test status
     /// ("pass", "fail", "miss") or a regex for the test file path.
     /// Applied after running the tests.

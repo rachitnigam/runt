@@ -1,5 +1,4 @@
-use crate::errors;
-use crate::test_results;
+use crate::{errors, test_results};
 
 use errors::RuntError;
 use futures::future;
@@ -52,6 +51,7 @@ async fn execute_test(
     // Generate expected string
     let expect_string =
         test_results::to_expect_string(status, &stdout, &stderr);
+
     // Open expect file for comparison.
     let expect_path = test_results::expect_file(expect_dir, &path);
     let state = fs::read_to_string(expect_path.clone())
@@ -112,6 +112,34 @@ impl TestSuite {
                 .collect();
         }
         self
+    }
+
+    /// Dry run the test suite.
+    /// Simply print out all the commands required to run the tests in this suite.
+    pub fn dry_run(self) {
+        use colored::*;
+        let TestSuite {
+            paths, cmd, name, ..
+        } = self;
+        // Skip test suite if there are no valid tests
+        if paths.is_empty() {
+            return;
+        }
+
+        let mut buf = String::with_capacity(500);
+
+        buf.push_str(&format!("{} ({} tests)\n", name.bold(), paths.len()));
+        paths.iter().for_each(|path| {
+            let path_str = path.to_str().unwrap();
+            buf.push_str(&format!(
+                "  {} {}\n    {} {}",
+                "⚬".blue(),
+                path_str.blue(),
+                "↳".blue(),
+                cmd.replace("{}", path_str).replace('\\', "\\\\")
+            ));
+        });
+        println!("{}", buf)
     }
 
     /// Execute the test suite and collect the results into a `TestSuiteResult`.

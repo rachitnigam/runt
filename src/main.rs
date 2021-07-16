@@ -76,6 +76,22 @@ async fn execute_all(
     Ok(fail)
 }
 
+fn dry_run(
+    suites: Vec<TestSuite>,
+    incl_reg: Option<Regex>,
+    excl_reg: Option<Regex>,
+) -> Result<i32, RuntError> {
+    suites.into_iter().for_each(|suite| {
+        // Add filters to each test suite.
+        suite
+            .with_include_filter(incl_reg.as_ref())
+            .with_exclude_filter(excl_reg.as_ref())
+            .dry_run();
+    });
+
+    Ok(0)
+}
+
 fn run() -> Result<i32, RuntError> {
     let opts = Opts::from_args();
 
@@ -116,20 +132,19 @@ fn run() -> Result<i32, RuntError> {
     // Switch to directory containing runt.toml.
     std::env::set_current_dir(&opts.dir)?;
 
-    let mut runtime = runtime::Builder::new()
-        .threaded_scheduler()
-        .enable_all()
-        .core_threads(opts.jobs_limit.unwrap_or_else(num_cpus::get))
-        .build()
-        .unwrap();
+    let suites = tests.into_iter().map(|c| c.into()).collect::<Vec<_>>();
+    if opts.dry_run {
+        dry_run(suites, incl_reg, excl_reg)
+    } else {
+        let runtime = runtime::Builder::new_multi_thread()
+            .enable_all()
+            .worker_threads(opts.jobs_limit.unwrap_or_else(num_cpus::get))
+            .build()
+            .unwrap();
 
-    // Run all the test suites.
-    runtime.block_on(execute_all(
-        tests.into_iter().map(|c| c.into()).collect::<Vec<_>>(),
-        incl_reg,
-        excl_reg,
-        opts,
-    ))
+        // Run all the test suites.
+        runtime.block_on(execute_all(suites, incl_reg, excl_reg, opts))
+    }
 }
 
 fn main() {
