@@ -1,4 +1,8 @@
-use runt::{cli, errors, executor::{self, suite}, picker::toml::Config};
+use runt::{
+    cli, errors,
+    executor::{self, suite},
+    picker::toml::Config,
+};
 
 use cli::Opts;
 use errors::RuntError;
@@ -92,12 +96,12 @@ fn run() -> Result<i32, RuntError> {
     let Config { tests, .. } = Config::from_path(&opts.dir)?;
 
     // Get the include and exclude regexes.
-    let incl_reg: Option<Regex> = opts
+    let include = opts
         .include_filter
         .as_ref()
         .map(|reg| Regex::new(&reg).expect("Invalid --include regex"));
 
-    let excl_reg = opts
+    let exclude = opts
         .exclude_filter
         .as_ref()
         .map(|reg| Regex::new(&reg).expect("Invalid --exclude regex"));
@@ -105,9 +109,15 @@ fn run() -> Result<i32, RuntError> {
     // Switch to directory containing runt.toml.
     std::env::set_current_dir(&opts.dir)?;
 
-    let suites: Vec<suite::Suite> =
-        tests.into_iter().map(|c| c.into()).collect();
-    let ctx = executor::Context::from(suites);
+    let suites: Vec<suite::Suite> = tests
+        .into_iter()
+        .map(|c| {
+            suite::Suite::from(c)
+                .with_filters(include.as_ref(), exclude.as_ref())
+        })
+        .collect();
+
+    let ctx = executor::Context::from(suites, opts.max_futures.unwrap_or(50));
     let runtime = runtime::Builder::new_multi_thread()
         .enable_all()
         .worker_threads(opts.jobs_limit.unwrap_or_else(num_cpus::get))
@@ -115,7 +125,7 @@ fn run() -> Result<i32, RuntError> {
         .unwrap();
 
     // Run all the test suites.
-    runtime.block_on(ctx.flat_summary())
+    runtime.block_on(ctx.flat_summary(opts))
 }
 
 fn main() {
