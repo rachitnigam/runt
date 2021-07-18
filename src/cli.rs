@@ -31,6 +31,10 @@ pub struct Opts {
     #[structopt(short = "n", long)]
     pub dry_run: bool,
 
+    /// Enable verbose printing
+    #[structopt(short = "v", long)]
+    pub verbose: bool,
+
     /// Filter out the reported test results based on test status
     /// ("pass", "fail", "miss") or a regex for the test file path.
     /// Applied after running the tests.
@@ -51,6 +55,12 @@ pub struct Opts {
     /// cpus.
     #[structopt(short = "j", long = "jobs")]
     pub jobs_limit: Option<usize>,
+
+    /// Maximum number of features that can be created for concurrent processing.
+    /// Use a lower number if runt gives the "too many file handles" error.
+    /// Defaults to 50.
+    #[structopt(long = "max-futures")]
+    pub max_futures: Option<usize>,
 }
 
 /// Possible values for the --only flag.

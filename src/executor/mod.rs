@@ -1,9 +1,9 @@
 //! An executor is responsible for executing the test configurations and generating results.
 
+mod context;
 pub mod results;
 pub mod suite;
 mod test;
-mod context;
 
-pub use test::Test;
 pub use context::Context;
+pub use test::Test;

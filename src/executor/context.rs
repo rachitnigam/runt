@@ -1,5 +1,8 @@
 use super::{results, suite, Test};
-use crate::errors::{self, RuntError};
+use crate::{
+    cli,
+    errors::{self, RuntError},
+};
 use futures::{
     io::{AllowStdIo, AsyncWriteExt},
     stream, StreamExt,
@@ -9,6 +12,8 @@ use futures::{
 pub struct Executor {
     /// Test configurations to be executed.
     tests: Vec<Test>,
+    /// Maximum number of futures that can be created.
+    max_futures: usize,
 }
 impl Executor {
     /// Execute the test suites and generate test results in any order.
@@ -19,7 +24,7 @@ impl Executor {
         self,
     ) -> impl stream::Stream<Item = Result<results::Test, RuntError>> {
         stream::iter(self.tests.into_iter().map(|test| test.execute_test()))
-            .buffer_unordered(10)
+            .buffer_unordered(self.max_futures)
     }
 }
 
@@ -33,35 +38,7 @@ pub struct Context {
 }
 
 impl Context {
-    /// Generates a summary that groups together tests of each test suite.
-    /// Necessarily blocks till all results in a test suite become available
-    /// before outputing the results.
-    pub fn test_suite_summary(self) {
-        todo!()
-    }
-
-    /// Generates a summary of the test results that streams the test results
-    /// without grouping them with test suites.
-    /// Immediately generates the output of the test as soon as they become
-    /// available.
-    pub async fn flat_summary(self) -> Result<i32, errors::RuntError> {
-        let mut tasks = self.exec.execute_all();
-        let stdout_buf = std::io::BufWriter::new(std::io::stdout());
-        let mut handle = AllowStdIo::new(stdout_buf);
-
-        while let Some(res) = tasks.next().await {
-            let buf = res?.report_str(false) + "\n";
-            handle.write_all(buf.as_bytes()).await?;
-            handle.flush().await?;
-        }
-
-        Ok(0)
-    }
-}
-
-/// Construct a Context from a list of Suites.
-impl From<Vec<suite::Suite>> for Context {
-    fn from(suites: Vec<suite::Suite>) -> Self {
+    pub fn from(suites: Vec<suite::Suite>, max_futures: usize) -> Self {
         let mut configs = Vec::with_capacity(suites.len());
         let mut tests = Vec::with_capacity(suites.len());
         for (idx, suite) in suites.into_iter().enumerate() {
@@ -76,8 +53,77 @@ impl From<Vec<suite::Suite>> for Context {
             configs.push(config);
         }
         Context {
-            exec: Executor { tests },
+            exec: Executor { tests, max_futures },
             configs,
         }
+    }
+
+    /// Generate a formatted string representing the current statistics
+    fn summary_string(miss: u64, timeout: u64, fail: u64, pass: u64) -> String {
+        use colored::*;
+
+        format!(
+            "  {} {} / {} {} / {} {}",
+            pass.to_string().green().bold(),
+            &"passing".green().bold(),
+            (fail + timeout).to_string().red().bold(),
+            &"failing".red().bold(),
+            miss.to_string().yellow().bold(),
+            &"missing".yellow().bold(),
+        )
+    }
+
+    /// Generates a summary that groups together tests of each test suite.
+    /// Necessarily blocks till all results in a test suite become available
+    /// before outputing the results.
+    pub fn test_suite_summary(self) {
+        todo!()
+    }
+
+    /// Generates a summary of the test results that streams the test results
+    /// without grouping them with test suites.
+    /// Immediately generates the output of the test as soon as they become
+    /// available.
+    pub async fn flat_summary(
+        self,
+        opts: cli::Opts,
+    ) -> Result<i32, errors::RuntError> {
+        let mut tasks = self.exec.execute_all();
+        let stdout_buf = std::io::BufWriter::new(std::io::stdout());
+        let mut handle = AllowStdIo::new(stdout_buf);
+        let (mut miss, mut timeout, mut fail, mut pass) = (0, 0, 0, 0);
+
+        println!("Runt executing...");
+        while let Some(result) = tasks.next().await {
+            let res = result?;
+            match &res.state {
+                results::State::Correct => {
+                    pass += 1;
+                }
+                results::State::Mismatch(..) => {
+                    fail += 1;
+                }
+                results::State::Timeout => {
+                    timeout += 1;
+                }
+                results::State::Missing(..) => {
+                    miss += 1;
+                }
+            }
+
+            let report = Self::summary_string(miss, timeout, fail, pass);
+            handle.write_all("\r\x1B[K".as_bytes()).await?;
+            if opts.verbose || !matches!(&res.state, results::State::Correct) {
+                handle
+                    .write_all(res.report_str(opts.diff).as_bytes())
+                    .await?;
+                handle.write("\n".as_bytes()).await?;
+            }
+            handle.write_all(report.as_bytes()).await?;
+            handle.flush().await?;
+        }
+        println!();
+
+        Ok((timeout + fail) as i32)
     }
 }

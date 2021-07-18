@@ -1,7 +1,10 @@
 //! The default picker for runt test suites that gathers tests to run from a
 //! runt.toml file.
 use serde::Deserialize;
-use std::{path::{Path, PathBuf}, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use crate::{errors, executor::suite};
 

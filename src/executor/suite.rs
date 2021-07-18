@@ -27,67 +27,21 @@ pub struct Suite {
     pub config: Config,
 }
 
-/// Wrapper struct to manage filtering paths in a [TestSuite].
-struct PathStream<'a> {
-    paths: Vec<PathBuf>,
-    exclude: Option<&'a Regex>,
-    include: Option<&'a Regex>,
-}
-
-impl<'a> PathStream<'a> {
-    /// Remove paths that match the filter.
-    /// Filter is matched against the string `suite_name:path`.
-    pub fn with_exclude_filter(mut self, exclude: Option<&'a Regex>) -> Self {
-        self.exclude = exclude;
-        self
-    }
-
-    /// Include paths that match the filter.
-    /// Filter is matched against the string `suite_name:path`.
-    pub fn with_include_filter(mut self, include: Option<&'a Regex>) -> Self {
-        self.include = include;
-        self
-    }
-
-    /// Generate a collection of paths by running the include and exclude
-    /// filters.
-    pub fn into_paths(self, name: String) -> Vec<PathBuf> {
-        let PathStream {
-            paths,
-            exclude,
-            include,
-        } = self;
-        paths
-            .into_iter()
-            .filter(|p| {
-                exclude
-                    .map(|ex| {
-                        !ex.is_match(
-                            &(name.clone() + ":" + &p.to_string_lossy()),
-                        )
-                    })
-                    .and_then(|accept| {
-                        include.map(|inc| {
-                            accept
-                                && inc.is_match(
-                                    &(name.clone()
-                                        + ":"
-                                        + &p.to_string_lossy()),
-                                )
-                        })
-                    })
+impl Suite {
+    pub fn with_filters<'a>(
+        mut self,
+        include: Option<&'a Regex>,
+        exclude: Option<&'a Regex>,
+    ) -> Self {
+        let name = &self.config.name;
+        self.paths.retain(|path| {
+            let path_str = path.to_string_lossy().clone();
+            path_str.to_string().insert_str(0, name);
+            include.map(|incl| incl.is_match(&path_str)).unwrap_or(true)
+                && exclude
+                    .map(|excl| !excl.is_match(&path_str))
                     .unwrap_or(true)
-            })
-            .collect()
-    }
-}
-
-impl From<Vec<PathBuf>> for PathStream<'_> {
-    fn from(paths: Vec<PathBuf>) -> Self {
-        Self {
-            paths,
-            exclude: None,
-            include: None,
-        }
+        });
+        self
     }
 }
