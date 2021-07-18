@@ -162,8 +162,7 @@ fn get_chunks<'a>(print_info: &'a [PrintInfo]) -> Vec<Vec<PrintInfo<'a>>> {
     printable
 }
 
-/// Generate a rich string representation to show diffs with line number
-/// information.
+/// Generate a string representation to show diffs with line number information.
 pub fn gen_diff(org: &str, new: &str) -> String {
     // Generate a changeset for the strings and get line number information.
     let changes = &Changeset::new(org, new, "\n");
