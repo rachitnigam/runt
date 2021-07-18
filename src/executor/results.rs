@@ -1,10 +1,9 @@
-use crate::cli;
-use crate::errors::RuntError;
+use crate::{cli, errors::RuntError, printer};
 use std::path::PathBuf;
 
 /// Track the state of TestResult.
 #[derive(Debug, PartialEq)]
-pub enum TestState {
+pub enum State {
     /// The test timed out.
     Timeout,
     /// The comparison succeeded.
@@ -21,7 +20,7 @@ pub enum TestState {
 
 /// Store information related to one test.
 #[derive(Debug)]
-pub struct TestResult {
+pub struct Test {
     /// Path of the test
     pub path: PathBuf,
 
@@ -29,17 +28,17 @@ pub struct TestResult {
     pub expect_path: PathBuf,
 
     /// Result of comparison
-    pub state: TestState,
+    pub state: State,
 
     /// The results of this structure were saved.
     pub saved: bool,
 }
 
-impl TestResult {
+impl Test {
     /// Save the results of the test suite into the expect file.
     pub fn save_results(&mut self) -> Result<(), RuntError> {
         use std::fs;
-        use TestState as TS;
+        use State as TS;
         match &self.state {
             TS::Correct | TS::Timeout => Ok(()),
             TS::Missing(expect) | TS::Mismatch(expect, _) => {
@@ -57,9 +56,8 @@ impl TestResult {
 
     /// Generate colorized string to report the results of this test.
     pub fn report_str(&self, show_diff: bool) -> String {
-        use crate::diff;
         use colored::*;
-        use TestState as TS;
+        use State as TS;
 
         let mut buf = String::new();
         let path_str = self.path.to_str().unwrap();
@@ -71,7 +69,8 @@ impl TestResult {
                     buf.push_str(&" (saved)".dimmed().to_string());
                 }
                 if show_diff {
-                    let diff = diff::gen_diff(&"".to_string(), &expect_string);
+                    let diff =
+                        printer::gen_diff(&"".to_string(), &expect_string);
                     buf.push('\n');
                     buf.push_str(&diff);
                 }
@@ -91,7 +90,7 @@ impl TestResult {
                     buf.push_str(&" (saved)".dimmed().to_string());
                 }
                 if show_diff {
-                    let diff = diff::gen_diff(&contents, &expect_string);
+                    let diff = printer::gen_diff(&contents, &expect_string);
                     buf.push('\n');
                     buf.push_str(&diff);
                 }
@@ -102,23 +101,23 @@ impl TestResult {
 }
 
 /// Result of running a TestSuite.
-pub struct TestSuiteResult {
+pub struct Suite {
     // Name of the test suite.
     pub name: String,
     // Number of matching paths.
     pub num_tests: i32,
     // TestResult for successfully executed tests.
-    pub results: Vec<TestResult>,
+    pub results: Vec<Test>,
     // Errors while running this suite.
     pub errors: Vec<RuntError>,
 }
 
-impl TestSuiteResult {
+impl Suite {
     /// Construct a new instance of TestSuiteResult
     pub fn new(
         name: String,
         num_tests: i32,
-        results: Vec<TestResult>,
+        results: Vec<Test>,
         errors: Vec<RuntError>,
     ) -> Self {
         Self {
@@ -132,9 +131,9 @@ impl TestSuiteResult {
     /// Filter out the test suite results using the test statuses.
     pub fn only_results(mut self, only: &Option<cli::OnlyOpt>) -> Self {
         use cli::OnlyOpt as O;
-        use TestState as TS;
+        use State as TS;
         self.results.retain(|el| {
-            if let (Some(only), TestResult { state, .. }) = (only, el) {
+            if let (Some(only), Test { state, .. }) = (only, el) {
                 return match (only, state) {
                     (O::Fail, TS::Mismatch(..)) => true,
                     (O::Pass, TS::Correct) => true,
@@ -153,7 +152,7 @@ impl TestSuiteResult {
         opts: &cli::Opts,
     ) -> (String, i32, i32, i32, i32) {
         use colored::*;
-        let TestSuiteResult {
+        let Suite {
             name,
             num_tests,
             results,
@@ -168,10 +167,10 @@ impl TestSuiteResult {
             results.iter().for_each(|info| {
                 buf.push_str(&format!("  {}\n", info.report_str(opts.diff)));
                 match info.state {
-                    TestState::Correct => pass += 1,
-                    TestState::Missing(..) => miss += 1,
-                    TestState::Mismatch(..) => fail += 1,
-                    TestState::Timeout => timeout += 1,
+                    State::Correct => pass += 1,
+                    State::Missing(..) => miss += 1,
+                    State::Mismatch(..) => fail += 1,
+                    State::Timeout => timeout += 1,
                 }
             });
         }
@@ -186,7 +185,7 @@ impl TestSuiteResult {
 
     /// Save results from this TestSuite.
     pub fn save_all(&mut self) -> &mut Self {
-        let TestSuiteResult { results, .. } = self;
+        let Suite { results, .. } = self;
         for result in results {
             if let Err(e) = result.save_results() {
                 self.errors.push(e);

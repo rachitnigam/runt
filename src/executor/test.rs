@@ -1,20 +1,22 @@
+use super::{results, suite};
+use crate::errors::RuntError;
 use std::{fs, path::PathBuf, time::Duration};
 use tokio::{process::Command, time};
 
-use crate::{
-    errors::RuntError,
-    test_results::{TestResult, TestState},
-};
-
-/// Struct that defines the state of a test to be run.
+/// Configuration of a test to be executed.
 pub struct Test {
     /// Path of the test to be run.
-    path: PathBuf,
+    pub path: PathBuf,
     /// Command to be executed for the test.
-    cmd: String,
+    pub cmd: String,
     /// Directory to save/check the expect results for.
     /// If set to `None`, defaults to the directory containing `Path`.
-    expect_dir: Option<PathBuf>,
+    pub expect_dir: Option<PathBuf>,
+    /// Test suite with which this Test is associated.
+    /// The mapping from the test suite
+    pub test_suite: suite::Id,
+    /// Timeout for this test.
+    pub timeout: Duration,
 }
 
 impl Test {
@@ -54,11 +56,15 @@ impl Test {
         path: PathBuf,
         cmd: String,
         expect_dir: Option<PathBuf>,
+        test_suite: suite::Id,
+        timeout: Duration,
     ) -> Self {
         Self {
             path,
             cmd,
             expect_dir,
+            test_suite,
+            timeout,
         }
     }
 
@@ -83,6 +89,7 @@ impl Test {
             self.cmd.replace("{}", self.path.to_str().unwrap());
         let mut cmd = Command::new("sh");
         cmd.arg("-c").arg(concrete_command);
+        cmd.kill_on_drop(true);
         cmd
     }
 
@@ -90,19 +97,16 @@ impl Test {
     /// std library fs::* and command::* so that there is a 1-to-1
     /// correspondence between tokio threads and spawned processes.
     /// This lets us control the number of parallel running processes.
-    pub async fn execute_test(
-        self,
-        timeout: Duration,
-    ) -> Result<TestResult, RuntError> {
+    pub async fn execute_test(self) -> Result<results::Test, RuntError> {
         let expect_path = self.expect_file();
 
         let mut cmd = self.construct_command();
 
-        match time::timeout(timeout, cmd.output()).await {
-            Err(_) => Ok(TestResult {
+        match time::timeout(self.timeout, cmd.output()).await {
+            Err(_) => Ok(results::Test {
                 path: self.path,
                 expect_path,
-                state: TestState::Timeout,
+                state: results::State::Timeout,
                 saved: false,
             }),
             Ok(res) => {
@@ -126,14 +130,17 @@ impl Test {
                 let state = fs::read_to_string(expect_path.clone())
                     .map(|contents| {
                         if contents == expect_string {
-                            TestState::Correct
+                            results::State::Correct
                         } else {
-                            TestState::Mismatch(expect_string.clone(), contents)
+                            results::State::Mismatch(
+                                expect_string.clone(),
+                                contents,
+                            )
                         }
                     })
-                    .unwrap_or(TestState::Missing(expect_string));
+                    .unwrap_or(results::State::Missing(expect_string));
 
-                Ok(TestResult {
+                Ok(results::Test {
                     path: self.path,
                     expect_path,
                     state,
