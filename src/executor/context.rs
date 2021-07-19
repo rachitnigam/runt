@@ -100,7 +100,7 @@ impl Context {
             let mut res = result?;
 
             // Save the result if needed
-            if opts.save {
+            if res.should_save(opts) {
                 res.save_results().await?;
             }
 
