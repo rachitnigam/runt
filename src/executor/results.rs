@@ -65,12 +65,15 @@ impl Test {
     }
 
     pub fn should_save(&self, opts: &cli::Opts) -> bool {
-        opts.save
-            && opts
-                .post_filter
-                .as_ref()
-                .map(|only| self.with_only_opt(&only))
-                .unwrap_or(true)
+        if !opts.save {
+            return false;
+        }
+
+        if let Some(only) = &opts.post_filter {
+            return self.with_only_opt(only);
+        }
+
+        true
     }
 
     /// Returns true if this test should be printed with the current options.
@@ -81,12 +84,11 @@ impl Test {
         }
 
         // Selectively print things if post_filter is enabled.
+        if let Some(only) = &opts.post_filter {
+            return self.with_only_opt(only);
+        }
         // Otherwise just print failing and missing tests
-        opts.post_filter
-            .as_ref()
-            .map(|only| self.with_only_opt(&only))
-            .unwrap_or(false)
-            || !matches!(self.state, State::Correct)
+        !matches!(self.state, State::Correct)
     }
 
     /// Generate colorized string to report the results of this test.
