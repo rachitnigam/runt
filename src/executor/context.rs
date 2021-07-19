@@ -38,6 +38,8 @@ pub struct Context {
 }
 
 impl Context {
+    /// Construct a new [Context] using suites and a maximum number of futures
+    /// allowed to run concurrently.
     pub fn from(suites: Vec<suite::Suite>, max_futures: usize) -> Self {
         let mut configs = Vec::with_capacity(suites.len());
         let mut tests = Vec::with_capacity(suites.len());
@@ -86,7 +88,7 @@ impl Context {
     /// available.
     pub async fn flat_summary(
         self,
-        opts: cli::Opts,
+        opts: &cli::Opts,
     ) -> Result<i32, errors::RuntError> {
         let mut tasks = self.exec.execute_all();
         let stdout_buf = std::io::BufWriter::new(std::io::stdout());
@@ -95,7 +97,13 @@ impl Context {
 
         println!("Runt executing...");
         while let Some(result) = tasks.next().await {
-            let res = result?;
+            let mut res = result?;
+
+            // Save the result if needed
+            if opts.save {
+                res.save_results().await?;
+            }
+
             match &res.state {
                 results::State::Correct => {
                     pass += 1;
@@ -111,14 +119,22 @@ impl Context {
                 }
             }
 
-            let report = Self::summary_string(miss, timeout, fail, pass);
+            // Clear the current line to print the updating counter.
             handle.write_all("\r\x1B[K".as_bytes()).await?;
-            if opts.verbose || !matches!(&res.state, results::State::Correct) {
+
+            // Print test information if needed.
+            if res.should_print(&opts) {
+                let suite_name = &self.configs[res.test_suite as usize].name;
                 handle
-                    .write_all(res.report_str(opts.diff).as_bytes())
+                    .write_all(
+                        res.report_str(Some(suite_name), opts.diff).as_bytes(),
+                    )
                     .await?;
                 handle.write("\n".as_bytes()).await?;
             }
+
+            // Print out the current summary
+            let report = Self::summary_string(miss, timeout, fail, pass);
             handle.write_all(report.as_bytes()).await?;
             handle.flush().await?;
         }
