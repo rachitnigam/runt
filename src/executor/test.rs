@@ -108,6 +108,7 @@ impl Test {
                 expect_path,
                 state: results::State::Timeout,
                 saved: false,
+                test_suite: self.test_suite,
             }),
             Ok(res) => {
                 let out = res.map_err(|err| {
@@ -145,6 +146,7 @@ impl Test {
                     expect_path,
                     state,
                     saved: false,
+                    test_suite: self.test_suite,
                 })
             }
         }

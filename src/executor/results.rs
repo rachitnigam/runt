@@ -1,5 +1,8 @@
 use crate::{cli, errors::RuntError, printer};
 use std::path::PathBuf;
+use tokio::fs;
+
+use super::suite;
 
 /// Track the state of TestResult.
 #[derive(Debug, PartialEq)]
@@ -23,27 +26,24 @@ pub enum State {
 pub struct Test {
     /// Path of the test
     pub path: PathBuf,
-
     /// Location of the expect string.
     pub expect_path: PathBuf,
-
     /// Result of comparison
     pub state: State,
-
     /// The results of this structure were saved.
     pub saved: bool,
+    /// Id for the test suite that owns this test.
+    pub test_suite: suite::Id,
 }
 
 impl Test {
     /// Save the results of the test suite into the expect file.
-    pub fn save_results(&mut self) -> Result<(), RuntError> {
-        use std::fs;
-        use State as TS;
+    pub async fn save_results(&mut self) -> Result<(), RuntError> {
         match &self.state {
-            TS::Correct | TS::Timeout => Ok(()),
-            TS::Missing(expect) | TS::Mismatch(expect, _) => {
+            State::Correct | State::Timeout => Ok(()),
+            State::Missing(expect) | State::Mismatch(expect, _) => {
                 self.saved = true;
-                fs::write(&self.expect_path, expect).map_err(|err| {
+                fs::write(&self.expect_path, expect).await.map_err(|err| {
                     RuntError(format!(
                         "{}: {}.",
                         self.expect_path.to_str().unwrap(),
@@ -54,16 +54,58 @@ impl Test {
         }
     }
 
+    fn with_only_opt(&self, only: &cli::OnlyOpt) -> bool {
+        use cli::OnlyOpt as O;
+        match (only, &self.state) {
+            (O::Fail, State::Mismatch(..)) => true,
+            (O::Pass, State::Correct) => true,
+            (O::Missing, State::Missing(..)) => true,
+            (O::Fail, _) | (O::Pass, _) | (O::Missing, _) => false,
+        }
+    }
+
+    pub fn should_save(&self, opts: &cli::Opts) -> bool {
+        opts.save
+            && opts
+                .post_filter
+                .as_ref()
+                .map(|only| self.with_only_opt(&only))
+                .unwrap_or(true)
+    }
+
+    /// Returns true if this test should be printed with the current options.
+    pub fn should_print(&self, opts: &cli::Opts) -> bool {
+        // Print everything if verbose mode is enabled
+        if opts.verbose {
+            return true;
+        }
+
+        // Selectively print things if post_filter is enabled.
+        // Otherwise just print failing and missing tests
+        opts.post_filter
+            .as_ref()
+            .map(|only| self.with_only_opt(&only))
+            .unwrap_or(false)
+            || !matches!(self.state, State::Correct)
+    }
+
     /// Generate colorized string to report the results of this test.
-    pub fn report_str(&self, show_diff: bool) -> String {
+    pub fn report_str(
+        &self,
+        suite: Option<&String>,
+        show_diff: bool,
+    ) -> String {
         use colored::*;
-        use State as TS;
 
         let mut buf = String::new();
         let path_str = self.path.to_str().unwrap();
         match &self.state {
-            TS::Missing(expect_string) => {
+            State::Missing(expect_string) => {
                 buf.push_str(&"? ".yellow().to_string());
+                suite.into_iter().for_each(|suite_name| {
+                    buf.push_str(&suite_name.bold().yellow().to_string());
+                    buf.push_str(&":".yellow().to_string())
+                });
                 buf.push_str(&path_str.yellow().to_string());
                 if self.saved {
                     buf.push_str(&" (saved)".dimmed().to_string());
@@ -75,17 +117,29 @@ impl Test {
                     buf.push_str(&diff);
                 }
             }
-            TS::Timeout => {
+            State::Timeout => {
                 buf.push_str(&"✗ ".red().to_string());
+                suite.into_iter().for_each(|suite_name| {
+                    buf.push_str(&suite_name.bold().red().to_string());
+                    buf.push_str(&":".red().to_string())
+                });
                 buf.push_str(&path_str.red().to_string());
                 buf.push_str(&" (timeout)".dimmed().to_string());
             }
-            TS::Correct => {
+            State::Correct => {
                 buf.push_str(&"✓ ".green().to_string());
+                suite.into_iter().for_each(|suite_name| {
+                    buf.push_str(&suite_name.bold().green().to_string());
+                    buf.push_str(&":".green().to_string())
+                });
                 buf.push_str(&path_str.green().to_string());
             }
-            TS::Mismatch(expect_string, contents) => {
+            State::Mismatch(expect_string, contents) => {
                 buf.push_str(&"✗ ".red().to_string());
+                suite.into_iter().for_each(|suite_name| {
+                    buf.push_str(&suite_name.bold().red().to_string());
+                    buf.push_str(&":".red().to_string())
+                });
                 buf.push_str(&path_str.red().to_string());
                 if self.saved {
                     buf.push_str(&" (saved)".dimmed().to_string());
@@ -132,13 +186,12 @@ impl Suite {
     /// Filter out the test suite results using the test statuses.
     pub fn only_results(mut self, only: &Option<cli::OnlyOpt>) -> Self {
         use cli::OnlyOpt as O;
-        use State as TS;
         self.results.retain(|el| {
             if let (Some(only), Test { state, .. }) = (only, el) {
                 return match (only, state) {
-                    (O::Fail, TS::Mismatch(..)) => true,
-                    (O::Pass, TS::Correct) => true,
-                    (O::Missing, TS::Missing(..)) => true,
+                    (O::Fail, State::Mismatch(..)) => true,
+                    (O::Pass, State::Correct) => true,
+                    (O::Missing, State::Missing(..)) => true,
                     (O::Fail, _) | (O::Pass, _) | (O::Missing, _) => false,
                 };
             }
@@ -166,7 +219,10 @@ impl Suite {
         if !results.is_empty() {
             buf.push_str(&format!("{} ({} tests)\n", name.bold(), num_tests));
             results.iter().for_each(|info| {
-                buf.push_str(&format!("  {}\n", info.report_str(opts.diff)));
+                buf.push_str(&format!(
+                    "  {}\n",
+                    info.report_str(None, opts.diff)
+                ));
                 match info.state {
                     State::Correct => pass += 1,
                     State::Missing(..) => miss += 1,
@@ -184,8 +240,8 @@ impl Suite {
         (buf, pass, fail, miss, timeout)
     }
 
-    /// Save results from this TestSuite.
-    pub fn save_all(&mut self) -> &mut Self {
+    // Save results from this TestSuite.
+    /* pub fn save_all(&mut self) -> &mut Self {
         let Suite { results, .. } = self;
         for result in results {
             if let Err(e) = result.save_results() {
@@ -193,5 +249,5 @@ impl Suite {
             }
         }
         self
-    }
+    } */
 }
