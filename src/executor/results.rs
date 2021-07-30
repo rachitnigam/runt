@@ -114,7 +114,7 @@ impl Test {
                 }
                 if show_diff {
                     let diff =
-                        printer::gen_diff(&"".to_string(), &expect_string);
+                        printer::gen_diff(&"".to_string(), expect_string);
                     buf.push('\n');
                     buf.push_str(&diff);
                 }
@@ -147,7 +147,7 @@ impl Test {
                     buf.push_str(&" (saved)".dimmed().to_string());
                 }
                 if show_diff {
-                    let diff = printer::gen_diff(&contents, &expect_string);
+                    let diff = printer::gen_diff(contents, expect_string);
                     buf.push('\n');
                     buf.push_str(&diff);
                 }
