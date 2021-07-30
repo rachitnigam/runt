@@ -95,7 +95,6 @@ impl Context {
         let mut handle = AllowStdIo::new(stdout_buf);
         let (mut miss, mut timeout, mut fail, mut pass) = (0, 0, 0, 0);
 
-        println!("Runt executing...");
         while let Some(result) = tasks.next().await {
             let mut res = result?;
 
@@ -123,7 +122,7 @@ impl Context {
             handle.write_all("\r\x1B[K".as_bytes()).await?;
 
             // Print test information if needed.
-            if res.should_print(&opts) {
+            if res.should_print(opts) {
                 let suite_name = &self.configs[res.test_suite as usize].name;
                 handle
                     .write_all(
