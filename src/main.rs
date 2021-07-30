@@ -10,6 +10,22 @@ use regex::Regex;
 use structopt::StructOpt;
 use tokio::runtime;
 
+fn dry_run(suites: Vec<suite::Suite>) {
+    use colored::*;
+    for suite in suites {
+        let cmd = suite.config.cmd.clone();
+        for path in suite.paths {
+            println!(
+                "{}{}{}\n  {}",
+                suite.config.name.blue().to_string(),
+                ":".blue(),
+                path.to_string_lossy().blue(),
+                cmd.replace("{}", path.to_str().unwrap())
+            );
+        }
+    }
+}
+
 fn run() -> Result<i32, RuntError> {
     let opts = Opts::from_args();
     let Config { tests, .. } = Config::from_path(&opts.dir)?;
@@ -35,6 +51,12 @@ fn run() -> Result<i32, RuntError> {
                 .with_filters(include.as_ref(), exclude.as_ref())
         })
         .collect();
+
+    // Print out the commands for each test in dry run mode.
+    if opts.dry_run {
+        dry_run(suites);
+        return Ok(0);
+    }
 
     let ctx = executor::Context::from(suites, opts.max_futures.unwrap_or(50));
     let runtime = runtime::Builder::new_multi_thread()

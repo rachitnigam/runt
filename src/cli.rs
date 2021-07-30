@@ -1,3 +1,4 @@
+//! Options of the command line interface.
 use crate::errors;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -11,6 +12,8 @@ use structopt::StructOpt;
     author = env!("CARGO_PKG_AUTHORS"),
     about = "Lightweight snapshot testing.",
 )]
+
+/// Struct describing the options available in the command line tool.
 pub struct Opts {
     /// Test folder.
     #[structopt(name = "TEST_DIR", parse(from_os_str), default_value = ".")]
