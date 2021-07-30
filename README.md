@@ -39,7 +39,7 @@ Runt is configured using a single `runt.toml` file:
 
 ```toml
 # Version of runt to be used with this configuration.
-ver = "0.3.0"
+ver = "0.3.1"
 
 # Configuration for each test suite. File paths are relative to the folder
 # containing runt.toml.
