@@ -1,10 +1,13 @@
 Runt Changelog
 ==============
 
-Unreleased
+0.3
 -----
+- BREAKING: The default test reporter now suppresses names of passing tests
+  by default and prints out test results as soon as they are done.
 - Added `-n` flag to print out the commands to be run to execute a test.
-- Internal: Update `tokio` library to stable version 1.
+- Internal: Complete rewrite to separate out the frontend and backend, improve
+  performance, and add documentation.
 
 0.2.8
 -----
