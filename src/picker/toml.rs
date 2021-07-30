@@ -88,7 +88,7 @@ impl From<SuiteConfig> for suite::Suite {
                 name: conf.name,
                 cmd: conf.cmd,
                 expect_dir: conf.expect_dir,
-                timeout: Duration::from_secs(conf.timeout.unwrap_or(120)),
+                timeout: Duration::from_secs(conf.timeout.unwrap_or(1200)),
             },
         }
     }

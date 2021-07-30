@@ -1,3 +1,4 @@
+//! A Runt test suite configuration.
 use std::{path::PathBuf, time::Duration};
 
 use regex::Regex;
@@ -5,6 +6,7 @@ use regex::Regex;
 /// Type for mapping test suite objects.
 pub type Id = u64;
 
+/// Configuration for a test suite.
 pub struct Config {
     /// Name of this TestSuite
     pub name: String,
@@ -14,7 +16,7 @@ pub struct Config {
     /// Optional directory to store the generated .expect files.
     pub expect_dir: Option<PathBuf>,
     /// Optional timeout for the tests specified in seconds.
-    /// Defaults to 120 seconds.
+    /// Defaults to 1200 seconds.
     pub timeout: Duration,
 }
 
@@ -23,20 +25,20 @@ pub struct Config {
 pub struct Suite {
     /// Paths of input files.
     pub paths: Vec<PathBuf>,
-    /// Configuration for the [TestSuite].
     pub config: Config,
 }
 
 impl Suite {
+    /// Filters the tests in this test suite using the regexes.
+    /// Matches the regexes against `<suite-name>:<test-name>`.
     pub fn with_filters<'a>(
         mut self,
         include: Option<&'a Regex>,
         exclude: Option<&'a Regex>,
     ) -> Self {
-        let name = &self.config.name;
+        let name = self.config.name.clone() + ":";
         self.paths.retain(|path| {
-            let path_str = path.to_string_lossy().clone();
-            path_str.to_string().insert_str(0, name);
+            let path_str = name.clone() + &path.to_string_lossy();
             include.map(|incl| incl.is_match(&path_str)).unwrap_or(true)
                 && exclude
                     .map(|excl| !excl.is_match(&path_str))

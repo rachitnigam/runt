@@ -3,8 +3,8 @@
 [latest]: https://img.shields.io/crates/v/runt.svg
 [crate]: https://crates.io/crates/runt
 
-Runt is a lightweight, parallel snapshot testing framework. It aims to enable
-snapshot testing with minimal configuration.
+Runt is a lightweight, concurrent, and parallel snapshot testing framework. 
+It aims to enable snapshot testing with minimal configuration.
 
 ![](static/runt.gif)
 
@@ -39,7 +39,7 @@ Runt is configured using a single `runt.toml` file:
 
 ```toml
 # Version of runt to be used with this configuration.
-ver = "0.2.2"
+ver = "0.3.0"
 
 # Configuration for each test suite. File paths are relative to the folder
 # containing runt.toml.
@@ -49,19 +49,29 @@ name = "Cat tests"
 # Test paths can be globs or exact.
 paths = [ "cat-test/*.txt" ]
 # Command to run on each test file. {} is replaced with input name.
-cmd = "cat {}"
+cmd = "sleep 1; cat {}"
 # (Optional) Directory to store the generated .expect files.
 expect_dir = "cat-out/"
+# (Optional) Timeout for tests in seconds. Defaults to 1200 seconds.
+timeout = 1200
 
 [[tests]]
 name = "Ls test"
 paths = [ "ls-test/input.txt" ]
-cmd = "cat {} | ls"
+cmd = "sleep 2; cat {} | ls"
 
 [[tests]]
 name = "Error test"
 paths = ["error-test/input.txt"]
-cmd = "echo error message 1>&2 && exit 1"
+cmd = "sleep 3; echo error message 1>&2 && exit 1"
+
+[[tests]]
+name = "Timeout test"
+cmd = """
+sleep 100
+"""
+paths = ["timeout-test/input.txt"]
+timeout = 2 # Timeout of two seconds
 ```
 
 Run `runt <dir>` to execute all the tests. `<dir>` defaults to the current

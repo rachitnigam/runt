@@ -75,13 +75,6 @@ impl Context {
         )
     }
 
-    /// Generates a summary that groups together tests of each test suite.
-    /// Necessarily blocks till all results in a test suite become available
-    /// before outputing the results.
-    pub fn test_suite_summary(self) {
-        todo!()
-    }
-
     /// Generates a summary of the test results that streams the test results
     /// without grouping them with test suites.
     /// Immediately generates the output of the test as soon as they become
