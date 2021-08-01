@@ -61,17 +61,25 @@ impl Context {
     }
 
     /// Generate a formatted string representing the current statistics
-    fn summary_string(miss: u64, timeout: u64, fail: u64, pass: u64) -> String {
+    fn summary_string(
+        remaining: u64,
+        miss: u64,
+        timeout: u64,
+        fail: u64,
+        pass: u64,
+    ) -> String {
         use colored::*;
 
         format!(
-            "  {} {} / {} {} / {} {}",
+            " {} {} / {} {} / {} {} / {} {}",
             pass.to_string().green().bold(),
             &"passing".green().bold(),
             (fail + timeout).to_string().red().bold(),
             &"failing".red().bold(),
             miss.to_string().yellow().bold(),
             &"missing".yellow().bold(),
+            remaining.to_string().dimmed().bold(),
+            &"remaining".dimmed().bold(),
         )
     }
 
@@ -83,10 +91,16 @@ impl Context {
         self,
         opts: &cli::Opts,
     ) -> Result<i32, errors::RuntError> {
+        let (mut miss, mut timeout, mut fail, mut pass, mut remaining) =
+            (0, 0, 0, 0, self.exec.tests.len() as u64);
         let mut tasks = self.exec.execute_all();
         let stdout_buf = std::io::BufWriter::new(std::io::stdout());
         let mut handle = AllowStdIo::new(stdout_buf);
-        let (mut miss, mut timeout, mut fail, mut pass) = (0, 0, 0, 0);
+
+        // Initial summary printing to give user feedback that runt has started.
+        let report = Self::summary_string(remaining, miss, timeout, fail, pass);
+        handle.write_all(report.as_bytes()).await?;
+        handle.flush().await?;
 
         while let Some(result) = tasks.next().await {
             let mut res = result?;
@@ -96,6 +110,7 @@ impl Context {
                 res.save_results().await?;
             }
 
+            // Update summary
             match &res.state {
                 results::State::Correct => {
                     pass += 1;
@@ -110,6 +125,7 @@ impl Context {
                     miss += 1;
                 }
             }
+            remaining -= 1;
 
             // Clear the current line to print the updating counter.
             handle.write_all("\r\x1B[K".as_bytes()).await?;
@@ -126,7 +142,8 @@ impl Context {
             }
 
             // Print out the current summary
-            let report = Self::summary_string(miss, timeout, fail, pass);
+            let report =
+                Self::summary_string(remaining, miss, timeout, fail, pass);
             handle.write_all(report.as_bytes()).await?;
             handle.flush().await?;
         }
