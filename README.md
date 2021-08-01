@@ -1,11 +1,10 @@
-# RUN Test (RUNT) &emsp; [![latest]][crate]
+# RUN Test (RUNT) &emsp; [![latest]][crate] [![latest-docs][docs]]
 
-[latest]: https://img.shields.io/crates/v/runt.svg
-[crate]: https://crates.io/crates/runt
+Runt is a lightweight, concurrent, and parallel snapshot testing framework
+that requires minimal configuration.
+Checkout the [documentation][docs] for explaination of various features.
 
-Runt is a lightweight, concurrent, and parallel snapshot testing framework. 
-It aims to enable snapshot testing with minimal configuration.
-
+Here is an example of `runt` in action:
 ![](static/runt.gif)
 
 Install the latest version of `runt` using:
@@ -31,77 +30,14 @@ under `runt-cli-test` test the outputs of the runt CLI.
 - Install [Rust][].
 - Run `cargo build --release`. The `runt` executable is generated
   under `target/release/runt`.
-- Runt is tested using `runt`. Run `runt runt-cli-test` to test runt.
-
-### Configuration
-
-Runt is configured using a single `runt.toml` file:
-
-```toml
-# Version of runt to be used with this configuration.
-ver = "0.3.1"
-
-# Configuration for each test suite. File paths are relative to the folder
-# containing runt.toml.
-[[tests]]
-# Optional name for this test suite.
-name = "Cat tests"
-# Test paths can be globs or exact.
-paths = [ "cat-test/*.txt" ]
-# Command to run on each test file. {} is replaced with input name.
-cmd = "sleep 1; cat {}"
-# (Optional) Directory to store the generated .expect files.
-expect_dir = "cat-out/"
-# (Optional) Timeout for tests in seconds. Defaults to 1200 seconds.
-timeout = 1200
-
-[[tests]]
-name = "Ls test"
-paths = [ "ls-test/input.txt" ]
-cmd = "sleep 2; cat {} | ls"
-
-[[tests]]
-name = "Error test"
-paths = ["error-test/input.txt"]
-cmd = "sleep 3; echo error message 1>&2 && exit 1"
-
-[[tests]]
-name = "Timeout test"
-cmd = """
-sleep 100
-"""
-paths = ["timeout-test/input.txt"]
-timeout = 2 # Timeout of two seconds
-```
-
-Run `runt <dir>` to execute all the tests. `<dir>` defaults to the current
-directory.
-
-### Options
-
-**Showing diffs**: By default, runt does not show diffs between the new output
-and the expect file. Use `--diff` to show the diffs.
-
-**Saving changes**: The `--save` flag overwrites the expect files to save the
-updated outputs.
-
-**Suppress specific outputs**: The `--only` flag can be used to focus on only
-failing, missing, or correct tests. It composes with the diff and save flags.
-
+- Runt is tested using `runt`. Run `runt cli-test` to test runt.
 
 ### Example
 
-- Runt has a minimal configuration example under cli-tools. The `runt.toml`
-  file contains all the configuration and explanation for various options.
+View the [example configuration][conf] for the tests in `cli-tests`.
+To run the tests, run `runt cli-tests`
 
-### Troubleshooting
-
-- **When executing a large test suite, I get `Too many open files (os error 24)`.**
-  Runt tries to spawn as many processes in parallel as possible and might hit
-  the system limit on open file descriptors. Use `ulimit -n 4096` to increase
-  the number of file descriptors that can be opened at the same time.
-
-### Other options
+### Alternatives
 
 - **[Turnt][]** is a testing framework that allows for more
   complex snapshot comparisons. It's particularly powerful when you have
@@ -117,3 +53,8 @@ failing, missing, or correct tests. It composes with the diff and save flags.
 [turnt]: https://github.com/cucapra/turnt
 [insta]: https://docs.rs/insta/0.15.0/insta/
 [jest]: https://jestjs.io/
+[latest-docs]: https://docs.rs/runt/badge.svg
+[docs]: https://docs.rs/runt/0.3.1/runt/
+[latest]: https://img.shields.io/crates/v/runt.svg
+[crate]: https://crates.io/crates/runt
+[conf]: https://github.com/rachitnigam/runt/blob/master/cli-test/runt.toml

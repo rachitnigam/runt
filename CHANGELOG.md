@@ -1,6 +1,11 @@
 Runt Changelog
 ==============
 
+0.3.2
+-----
+- Summary reports the number of remaining tests
+- Internal: Replace `structopt` with `argh`
+
 0.3.1
 -----
 - BREAKING: The default test reporter now suppresses names of passing tests

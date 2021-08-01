@@ -7,7 +7,6 @@ use runt::{
 use cli::Opts;
 use errors::RuntError;
 use regex::Regex;
-use structopt::StructOpt;
 use tokio::runtime;
 
 fn dry_run(suites: Vec<suite::Suite>) {
@@ -27,7 +26,13 @@ fn dry_run(suites: Vec<suite::Suite>) {
 }
 
 fn run() -> Result<i32, RuntError> {
-    let opts = Opts::from_args();
+    let opts: Opts = argh::from_env();
+
+    if opts.version {
+        println!(env!("CARGO_PKG_VERSION"));
+        return Ok(0)
+    }
+
     let Config { tests, .. } = Config::from_path(&opts.dir)?;
 
     // Get the include and exclude regexes.

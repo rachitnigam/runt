@@ -1,6 +1,6 @@
 [package]
 name = "runt"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Rachit Nigam <rachit.nigam12@gmail.com>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -12,13 +12,13 @@ categories = ["development-tools::testing"]
 
 [dependencies]
 regex = "1"
-structopt = "0.3"
 difference = "2"
 futures = "0.3.4"
 colored = "2"
 toml = "0.5"
 glob = "0.3.0"
 num_cpus = "1.13"
+argh = "0.1.5"
 
 [dependencies.serde]
 version = "1"

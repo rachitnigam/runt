@@ -1,69 +1,72 @@
 //! Options of the command line interface.
 use crate::errors;
-use std::path::PathBuf;
-use structopt::StructOpt;
+use argh::FromArgs;
+use std::path::{Path, PathBuf};
 
-/// Options for the CLI.
-#[derive(StructOpt, Debug)]
-#[structopt(name = "runt")]
-#[structopt(
-    name = env!("CARGO_PKG_NAME"),
-    version = env!("CARGO_PKG_VERSION"),
-    author = env!("CARGO_PKG_AUTHORS"),
-    about = "Lightweight snapshot testing.",
-)]
-
-/// Struct describing the options available in the command line tool.
+#[derive(FromArgs)]
+/// Lightweight snapshot testing framework
 pub struct Opts {
-    /// Test folder.
-    #[structopt(name = "TEST_DIR", parse(from_os_str), default_value = ".")]
+    /// test folder.
+    #[argh(
+        positional,
+        from_str_fn(read_path),
+        default = "Path::new(\".\").into()"
+    )]
     pub dir: PathBuf,
 
-    /// Show diffs for each failing test.
-    #[structopt(short, long)]
+    /// show diffs for each failing test.
+    #[argh(switch, short = 'd')]
     pub diff: bool,
 
-    /// Update expect files for displayed tests. Use the --only flag to save
+    /// update expect files for displayed tests. Use the --only flag to save
     /// failing or missing tests.
-    #[structopt(short, long)]
+    #[argh(switch, short = 's')]
     pub save: bool,
 
-    /// Print out the commands to be run for each test case.
+    /// print out the commands to be run for each test case.
     /// Warning: Will probably generate a lot of text unless used with
     /// --include or --exclude
-    #[structopt(short = "n", long)]
+    #[argh(switch, short = 'n')]
     pub dry_run: bool,
 
-    /// Enable verbose printing
-    #[structopt(short = "v", long)]
+    /// enable verbose printing
+    #[argh(switch, short = 'v')]
     pub verbose: bool,
 
-    /// Filter out the reported test results based on test status
+    /// filter out the reported test results based on test status
     /// ("pass", "fail", "miss") or a regex for the test file path.
     /// Applied after running the tests.
-    #[structopt(short = "o", long = "only")]
+    #[argh(option, short = 'o', long = "only")]
     pub post_filter: Option<OnlyOpt>,
 
-    /// Exclude matching tests using a regex on "<suite-name>:<path>" strings
+    /// exclude matching tests using a regex on "<suite-name>:<path>" strings
     /// Applied before running tests.
-    #[structopt(short = "x", long = "exclude")]
+    #[argh(option, short = 'x', long = "exclude")]
     pub exclude_filter: Option<String>,
 
-    /// Include matching tests using a regex on "<suite-name>:<path>" strings
+    /// include matching tests using a regex on "<suite-name>:<path>" strings
     /// Applied before running tests.
-    #[structopt(short = "i", long = "include")]
+    #[argh(option, short = 'i', long = "include")]
     pub include_filter: Option<String>,
 
-    /// Limit the number of jobs to run in parallel. Defaults to number of logical
+    /// limit the number of jobs to run in parallel. Defaults to number of logical
     /// cpus.
-    #[structopt(short = "j", long = "jobs")]
+    #[argh(option, short = 'j', long = "jobs")]
     pub jobs_limit: Option<usize>,
 
-    /// Maximum number of features that can be created for concurrent processing.
+    /// maximum number of features that can be created for concurrent processing.
     /// Use a lower number if runt gives the "too many file handles" error.
     /// Defaults to 50.
-    #[structopt(long = "max-futures")]
+    #[argh(option, long = "max-futures")]
     pub max_futures: Option<usize>,
+
+    /// print the version of runt
+    #[argh(switch, short = 'V')]
+    pub version: bool,
+}
+
+fn read_path(path: &str) -> Result<PathBuf, String> {
+    Ok(Path::new(path).into())
 }
 
 /// Possible values for the --only flag.
