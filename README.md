@@ -34,8 +34,8 @@ under `runt-cli-test` test the outputs of the runt CLI.
 
 ### Example
 
-View the [example configuration][conf] for the tests in `cli-tests`.
-To run the tests, run `runt cli-tests`
+View the [example configuration][conf] for the tests in `cli-test`.
+To run the tests, run `runt cli-test`
 
 ### Alternatives
 
