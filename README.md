@@ -1,4 +1,4 @@
-# RUN Test (RUNT) &emsp; [![latest]][crate] [![latest-docs][docs]]
+# RUN Test (RUNT) &emsp; [![latest]][crate] [![latest-docs]][docs]
 
 Runt is a lightweight, concurrent, and parallel snapshot testing framework
 that requires minimal configuration.
