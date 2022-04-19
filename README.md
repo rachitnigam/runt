@@ -2,7 +2,7 @@
 
 Runt is a lightweight, concurrent, and parallel snapshot testing framework
 that requires minimal configuration.
-Checkout the [documentation][docs] for explaination of various features.
+Checkout the [documentation][docs] for explanation of various features.
 
 Here is an example of `runt` in action:
 ![](static/runt.gif)
@@ -54,7 +54,7 @@ To run the tests, run `runt cli-test`
 [insta]: https://docs.rs/insta/0.15.0/insta/
 [jest]: https://jestjs.io/
 [latest-docs]: https://docs.rs/runt/badge.svg
-[docs]: https://docs.rs/runt/0.3.1/runt/
+[docs]: https://docs.rs/runt/latest/runt/
 [latest]: https://img.shields.io/crates/v/runt.svg
 [crate]: https://crates.io/crates/runt
 [conf]: https://github.com/rachitnigam/runt/blob/master/cli-test/runt.toml
