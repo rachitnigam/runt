@@ -71,7 +71,7 @@ fn run() -> Result<i32, RuntError> {
         .unwrap();
 
     // Run all the test suites.
-    runtime.block_on(ctx.flat_summary(&opts))
+    runtime.block_on(ctx.execute_and_summarize(&opts))
 }
 
 fn main() {

@@ -28,6 +28,116 @@ impl Executor {
     }
 }
 
+/// Track the status of an executing test suite and print output to stdout.
+pub struct Status {
+    pub miss: u64,
+    pub pass: u64,
+    pub remain: u64,
+    pub skip: u64,
+    pub fail: u64,
+    pub timeout: u64,
+    /// Handle to the output
+    handle: AllowStdIo<std::io::BufWriter<std::io::Stdout>>,
+    istty: bool,
+}
+
+impl Status {
+    /// Instantiate a test suite with total number of tests
+    pub fn new(total: u64) -> Self {
+        let handle =
+            AllowStdIo::new(std::io::BufWriter::new(std::io::stdout()));
+        let istty = atty::is(atty::Stream::Stdout);
+        Self {
+            remain: total,
+            miss: 0,
+            pass: 0,
+            skip: 0,
+            fail: 0,
+            timeout: 0,
+            handle,
+            istty,
+        }
+    }
+
+    /// Generate a summary string for the current state.
+    fn summary(&self) -> String {
+        use colored::*;
+
+        format!(
+            " {} {} / {} {} / {} {} / {} {} / {} {}",
+            self.pass.to_string().green().bold(),
+            &"passing".green().bold(),
+            (self.fail + self.timeout).to_string().red().bold(),
+            &"failing".red().bold(),
+            self.miss.to_string().yellow().bold(),
+            &"missing".yellow().bold(),
+            self.skip.to_string().yellow().dimmed().bold(),
+            &"skipped".yellow().dimmed().bold(),
+            self.remain.to_string().dimmed().bold(),
+            &"remaining".dimmed().bold(),
+        )
+    }
+
+    /// Stream out the current summary to the output if possible.
+    #[inline]
+    pub async fn stream_summary(&mut self) -> Result<(), errors::RuntError> {
+        if self.istty {
+            self.print_summary().await?;
+        }
+        Ok(())
+    }
+
+    /// Print the current status
+    #[inline]
+    pub async fn print_summary(&mut self) -> Result<(), errors::RuntError> {
+        self.handle.write_all(self.summary().as_bytes()).await?;
+        self.handle.flush().await?;
+        Ok(())
+    }
+
+    /// Clear the current output if possible.
+    #[inline]
+    pub async fn clear(&mut self) -> Result<(), errors::RuntError> {
+        if self.istty {
+            self.handle.write_all("\r\x1B[K".as_bytes()).await?;
+        }
+        Ok(())
+    }
+
+    /// Print a message to the output handler.
+    pub async fn print<S: AsRef<[u8]>>(
+        &mut self,
+        msg: S,
+    ) -> Result<(), errors::RuntError> {
+        self.handle.write_all(msg.as_ref()).await?;
+        self.handle.write("\n".as_bytes()).await?;
+        self.handle.flush().await?;
+        Ok(())
+    }
+
+    /// Update the status given the [State] of a test.
+    pub fn update(&mut self, state: &results::State) {
+        match state {
+            results::State::Skip => {
+                self.skip += 1;
+            }
+            results::State::Correct => {
+                self.pass += 1;
+            }
+            results::State::Mismatch(..) => {
+                self.fail += 1;
+            }
+            results::State::Timeout => {
+                self.timeout += 1;
+            }
+            results::State::Missing(..) => {
+                self.miss += 1;
+            }
+        }
+        self.remain -= 1;
+    }
+}
+
 /// An execution context manage the mapping between test suites and test, asynchronously executes
 /// tests, collects results, and streams out results as appropriate.
 pub struct Context {
@@ -60,57 +170,16 @@ impl Context {
         }
     }
 
-    /// Generate a formatted string representing the current statistics
-    fn summary_string(
-        remaining: u64,
-        miss: u64,
-        skip: u64,
-        timeout: u64,
-        fail: u64,
-        pass: u64,
-    ) -> String {
-        use colored::*;
-
-        format!(
-            " {} {} / {} {} / {} {} / {} {} / {} {}",
-            pass.to_string().green().bold(),
-            &"passing".green().bold(),
-            (fail + timeout).to_string().red().bold(),
-            &"failing".red().bold(),
-            miss.to_string().yellow().bold(),
-            &"missing".yellow().bold(),
-            skip.to_string().yellow().dimmed().bold(),
-            &"skipped".yellow().dimmed().bold(),
-            remaining.to_string().dimmed().bold(),
-            &"remaining".dimmed().bold(),
-        )
-    }
-
-    /// Generates a summary of the test results that streams the test results
-    /// without grouping them with test suites.
-    /// Immediately generates the output of the test as soon as they become
-    /// available.
-    pub async fn flat_summary(
+    /// Generates a streaming summary of the test results.
+    pub async fn execute_and_summarize(
         self,
         opts: &cli::Opts,
     ) -> Result<i32, errors::RuntError> {
-        let (
-            mut miss,
-            mut skip,
-            mut timeout,
-            mut fail,
-            mut pass,
-            mut remaining,
-        ) = (0, 0, 0, 0, 0, self.exec.tests.len() as u64);
+        let mut st = Status::new(self.exec.tests.len() as u64);
         let mut tasks = self.exec.execute_all();
-        let stdout_buf = std::io::BufWriter::new(std::io::stdout());
-        let mut handle = AllowStdIo::new(stdout_buf);
 
         // Initial summary printing to give user feedback that runt has started.
-        let report =
-            Self::summary_string(remaining, miss, skip, timeout, fail, pass);
-        handle.write_all(report.as_bytes()).await?;
-        handle.flush().await?;
+        st.stream_summary().await?;
 
         while let Some(result) = tasks.next().await {
             let mut res = result?;
@@ -121,48 +190,27 @@ impl Context {
             }
 
             // Update summary
-            match &res.state {
-                results::State::Skip => {
-                    skip += 1;
-                }
-                results::State::Correct => {
-                    pass += 1;
-                }
-                results::State::Mismatch(..) => {
-                    fail += 1;
-                }
-                results::State::Timeout => {
-                    timeout += 1;
-                }
-                results::State::Missing(..) => {
-                    miss += 1;
-                }
-            }
-            remaining -= 1;
+            st.update(&res.state);
 
             // Clear the current line to print the updating counter.
-            handle.write_all("\r\x1B[K".as_bytes()).await?;
+            st.clear().await?;
 
             // Print test information if needed.
             if res.should_print(opts) {
                 let suite_name = &self.configs[res.test_suite as usize].name;
-                handle
-                    .write_all(
-                        res.report_str(Some(suite_name), opts.diff).as_bytes(),
-                    )
+                st.print(res.report_str(Some(suite_name), opts.diff))
                     .await?;
-                handle.write("\n".as_bytes()).await?;
             }
 
             // Print out the current summary
-            let report = Self::summary_string(
-                remaining, miss, skip, timeout, fail, pass,
-            );
-            handle.write_all(report.as_bytes()).await?;
-            handle.flush().await?;
+            st.stream_summary().await?;
         }
+
+        // Print the final summary
+        st.clear().await?;
+        st.print_summary().await?;
         println!();
 
-        Ok((timeout + fail) as i32)
+        Ok((st.timeout + st.fail) as i32)
     }
 }
