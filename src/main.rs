@@ -16,7 +16,7 @@ fn dry_run(suites: Vec<suite::Suite>) {
         for path in suite.paths {
             println!(
                 "{}{}{}\n  {}",
-                suite.config.name.blue().to_string(),
+                suite.config.name.blue(),
                 ":".blue(),
                 path.to_string_lossy().blue(),
                 cmd.replace("{}", path.to_str().unwrap())
@@ -30,7 +30,7 @@ fn run() -> Result<i32, RuntError> {
 
     if opts.version {
         println!(env!("CARGO_PKG_VERSION"));
-        return Ok(0)
+        return Ok(0);
     }
 
     let Config { tests, .. } = Config::from_path(&opts.dir)?;

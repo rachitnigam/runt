@@ -12,6 +12,8 @@ pub enum State {
     Timeout,
     /// The comparison succeeded.
     Correct,
+    /// The test was skipped because of a .skip file
+    Skip,
     /// The .expect file is missing. Contains the generated expectation string.
     Missing(String),
     /// The comparison failed. Contains the the generated expectation string
@@ -41,7 +43,7 @@ impl Test {
     /// Save the results of the test suite into the expect file.
     pub async fn save_results(&mut self) -> Result<(), RuntError> {
         match &self.state {
-            State::Correct | State::Timeout => Ok(()),
+            State::Skip | State::Correct | State::Timeout => Ok(()),
             State::Missing(expect) | State::Mismatch(expect, _) => {
                 self.saved = true;
                 fs::write(&self.expect_path, expect).await.map_err(|err| {
@@ -107,6 +109,17 @@ impl Test {
         let mut buf = String::new();
         let path_str = self.path.to_str().unwrap();
         match &self.state {
+            State::Skip => {
+                assert!(!self.saved, "Skipped files cannot be saved");
+                buf.push_str(&"- ".yellow().dimmed().to_string());
+                suite.into_iter().for_each(|suite_name| {
+                    buf.push_str(
+                        &suite_name.bold().yellow().dimmed().to_string(),
+                    );
+                    buf.push_str(&":".yellow().dimmed().to_string())
+                });
+                buf.push_str(&path_str.yellow().dimmed().to_string());
+            }
             State::Missing(expect_string) => {
                 buf.push_str(&"? ".yellow().to_string());
                 suite.into_iter().for_each(|suite_name| {

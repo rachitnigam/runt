@@ -52,7 +52,7 @@ impl Config {
             errors::RuntError(format!(
                 "Failed to parse {}: {}",
                 conf_path.to_str().unwrap(),
-                err.to_string()
+                err
             ))
         })?;
 

@@ -51,23 +51,6 @@ impl Test {
         buf
     }
 
-    /// Construct a new instance of Test.
-    pub fn new(
-        path: PathBuf,
-        cmd: String,
-        expect_dir: Option<PathBuf>,
-        test_suite: suite::Id,
-        timeout: Duration,
-    ) -> Self {
-        Self {
-            path,
-            cmd,
-            expect_dir,
-            test_suite,
-            timeout,
-        }
-    }
-
     fn get_base(&self) -> PathBuf {
         self.expect_dir
             .clone()
@@ -80,6 +63,11 @@ impl Test {
     /// Path of the expect file.
     pub fn expect_file(&self) -> PathBuf {
         self.get_base().with_extension("expect")
+    }
+
+    /// Path of the skip file
+    pub fn skip_file(&self) -> PathBuf {
+        self.get_base().with_extension("skip")
     }
 
     /// Construct a command to run by replacing all occurances of `{}` with that
@@ -98,6 +86,17 @@ impl Test {
     /// correspondence between tokio threads and spawned processes.
     /// This lets us control the number of parallel running processes.
     pub async fn execute_test(self) -> Result<results::Test, RuntError> {
+        let skip_path = self.skip_file();
+        if skip_path.exists() {
+            return Ok(results::Test {
+                path: self.path,
+                expect_path: skip_path,
+                state: results::State::Skip,
+                saved: false,
+                test_suite: self.test_suite,
+            });
+        }
+
         let expect_path = self.expect_file();
 
         let mut cmd = self.construct_command();
@@ -115,7 +114,7 @@ impl Test {
                     RuntError(format!(
                         "{}: {}",
                         self.path.to_str().unwrap(),
-                        err.to_string()
+                        err
                     ))
                 })?;
 

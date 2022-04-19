@@ -21,6 +21,11 @@ paths = [ "ls-test/input.txt" ]
 cmd = "sleep 4; cat {} | ls"
 
 [[tests]]
+name = "Skip test"
+paths = [ "skip-test/input.txt" ]
+cmd = "sleep 4; cat {} | ls"
+
+[[tests]]
 name = "Error test"
 paths = ["error-test/input.txt"]
 cmd = "sleep 3; echo error message 1>&2 && exit 1"

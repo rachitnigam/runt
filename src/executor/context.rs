@@ -64,6 +64,7 @@ impl Context {
     fn summary_string(
         remaining: u64,
         miss: u64,
+        skip: u64,
         timeout: u64,
         fail: u64,
         pass: u64,
@@ -71,13 +72,15 @@ impl Context {
         use colored::*;
 
         format!(
-            " {} {} / {} {} / {} {} / {} {}",
+            " {} {} / {} {} / {} {} / {} {} / {} {}",
             pass.to_string().green().bold(),
             &"passing".green().bold(),
             (fail + timeout).to_string().red().bold(),
             &"failing".red().bold(),
             miss.to_string().yellow().bold(),
             &"missing".yellow().bold(),
+            skip.to_string().yellow().dimmed().bold(),
+            &"skipped".yellow().dimmed().bold(),
             remaining.to_string().dimmed().bold(),
             &"remaining".dimmed().bold(),
         )
@@ -91,14 +94,21 @@ impl Context {
         self,
         opts: &cli::Opts,
     ) -> Result<i32, errors::RuntError> {
-        let (mut miss, mut timeout, mut fail, mut pass, mut remaining) =
-            (0, 0, 0, 0, self.exec.tests.len() as u64);
+        let (
+            mut miss,
+            mut skip,
+            mut timeout,
+            mut fail,
+            mut pass,
+            mut remaining,
+        ) = (0, 0, 0, 0, 0, self.exec.tests.len() as u64);
         let mut tasks = self.exec.execute_all();
         let stdout_buf = std::io::BufWriter::new(std::io::stdout());
         let mut handle = AllowStdIo::new(stdout_buf);
 
         // Initial summary printing to give user feedback that runt has started.
-        let report = Self::summary_string(remaining, miss, timeout, fail, pass);
+        let report =
+            Self::summary_string(remaining, miss, skip, timeout, fail, pass);
         handle.write_all(report.as_bytes()).await?;
         handle.flush().await?;
 
@@ -112,6 +122,9 @@ impl Context {
 
             // Update summary
             match &res.state {
+                results::State::Skip => {
+                    skip += 1;
+                }
                 results::State::Correct => {
                     pass += 1;
                 }
@@ -142,8 +155,9 @@ impl Context {
             }
 
             // Print out the current summary
-            let report =
-                Self::summary_string(remaining, miss, timeout, fail, pass);
+            let report = Self::summary_string(
+                remaining, miss, skip, timeout, fail, pass,
+            );
             handle.write_all(report.as_bytes()).await?;
             handle.flush().await?;
         }
