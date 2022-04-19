@@ -1,6 +1,14 @@
 Runt Changelog
 ==============
 
+0.4.0
+-----
+
+- Added ability to specify `.skip` files. If a test contains a `.skip` file in the same directory as the output, then the test will not be run at all.
+- Correctly handle non-TTY output streams: Do not attempt to stream updates to the test counter.
+- Internal: Added the `Status` data structure to current status of the executor and printing out details to the user.
+
+
 0.3.2
 -----
 - Summary reports the number of remaining tests
