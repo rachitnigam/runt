@@ -48,6 +48,8 @@ To run the tests, run `runt cli-test`
   arbitrary shell commands which enables testing CLI programs.
 - **[jest][]** is a JavaScript snapshot testing framework that allow
   formulation of complex expectation queries.
+  
+Runt is used to test several reserach compilers built by the [Capra lab](https://capra.cs.cornell.edu): [Calyx](https://calyxir.org), [Dahlia](https://capra.cs.cornell.edu/dahlia), and [Filament](https://github.com/cucapra/filament).
 
 [rust]: https://www.rust-lang.org/tools/install
 [turnt]: https://github.com/cucapra/turnt
