@@ -211,6 +211,11 @@ impl Context {
         st.print_summary().await?;
         println!();
 
-        Ok((st.timeout + st.fail) as i32)
+        match opts.post_filter {
+            Some(cli::OnlyOpt::Fail) => Ok((st.fail + st.timeout) as i32),
+            Some(cli::OnlyOpt::Missing) => Ok((st.miss) as i32),
+            Some(cli::OnlyOpt::Pass) => Ok(0),
+            None => Ok((st.fail + st.timeout + st.miss) as i32)
+        }
     }
 }
