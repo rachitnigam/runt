@@ -111,58 +111,55 @@ impl Test {
         match &self.state {
             State::Skip => {
                 assert!(!self.saved, "Skipped files cannot be saved");
-                buf.push_str(&"- ".yellow().dimmed().to_string());
+                buf.push_str(&"- ".yellow().dimmed());
                 suite.into_iter().for_each(|suite_name| {
-                    buf.push_str(
-                        &suite_name.bold().yellow().dimmed().to_string(),
-                    );
-                    buf.push_str(&":".yellow().dimmed().to_string())
+                    buf.push_str(&suite_name.bold().yellow().dimmed());
+                    buf.push_str(&":".yellow().dimmed())
                 });
-                buf.push_str(&path_str.yellow().dimmed().to_string());
+                buf.push_str(&path_str.yellow().dimmed());
             }
             State::Missing(expect_string) => {
-                buf.push_str(&"? ".yellow().to_string());
+                buf.push_str(&"? ".yellow());
                 suite.into_iter().for_each(|suite_name| {
-                    buf.push_str(&suite_name.bold().yellow().to_string());
-                    buf.push_str(&":".yellow().to_string())
+                    buf.push_str(&suite_name.bold().yellow());
+                    buf.push_str(&":".yellow())
                 });
-                buf.push_str(&path_str.yellow().to_string());
+                buf.push_str(&path_str.yellow());
                 if self.saved {
-                    buf.push_str(&" (saved)".dimmed().to_string());
+                    buf.push_str(&" (saved)".dimmed());
                 }
                 if show_diff {
-                    let diff =
-                        printer::gen_diff(&"".to_string(), expect_string);
+                    let diff = printer::gen_diff("", expect_string);
                     buf.push('\n');
                     buf.push_str(&diff);
                 }
             }
             State::Timeout => {
-                buf.push_str(&"✗ ".red().to_string());
+                buf.push_str(&"✗ ".red());
                 suite.into_iter().for_each(|suite_name| {
-                    buf.push_str(&suite_name.bold().red().to_string());
-                    buf.push_str(&":".red().to_string())
+                    buf.push_str(&suite_name.bold().red());
+                    buf.push_str(&":".red())
                 });
-                buf.push_str(&path_str.red().to_string());
-                buf.push_str(&" (timeout)".dimmed().to_string());
+                buf.push_str(&path_str.red());
+                buf.push_str(&" (timeout)".dimmed());
             }
             State::Correct => {
-                buf.push_str(&"✓ ".green().to_string());
+                buf.push_str(&"✓ ".green());
                 suite.into_iter().for_each(|suite_name| {
-                    buf.push_str(&suite_name.bold().green().to_string());
-                    buf.push_str(&":".green().to_string())
+                    buf.push_str(&suite_name.bold().green());
+                    buf.push_str(&":".green())
                 });
-                buf.push_str(&path_str.green().to_string());
+                buf.push_str(&path_str.green());
             }
             State::Mismatch(expect_string, contents) => {
-                buf.push_str(&"✗ ".red().to_string());
+                buf.push_str(&"✗ ".red());
                 suite.into_iter().for_each(|suite_name| {
-                    buf.push_str(&suite_name.bold().red().to_string());
-                    buf.push_str(&":".red().to_string())
+                    buf.push_str(&suite_name.bold().red());
+                    buf.push_str(&":".red())
                 });
-                buf.push_str(&path_str.red().to_string());
+                buf.push_str(&path_str.red());
                 if self.saved {
-                    buf.push_str(&" (saved)".dimmed().to_string());
+                    buf.push_str(&" (saved)".dimmed());
                 }
                 if show_diff {
                     let diff = printer::gen_diff(contents, expect_string);

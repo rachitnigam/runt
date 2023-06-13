@@ -110,7 +110,7 @@ impl Status {
         msg: S,
     ) -> Result<(), errors::RuntError> {
         self.handle.write_all(msg.as_ref()).await?;
-        self.handle.write("\n".as_bytes()).await?;
+        self.handle.write_all("\n".as_ref()).await?;
         self.handle.flush().await?;
         Ok(())
     }
