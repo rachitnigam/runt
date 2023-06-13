@@ -13,13 +13,13 @@ categories = ["development-tools::testing"]
 [dependencies]
 regex = "1"
 difference = "2"
-futures = "0.3.4"
+futures = "0.3"
 colored = "2"
 toml = "0.5"
-glob = "0.3.0"
+glob = "0.3"
 num_cpus = "1.13"
-argh = "0.1.5"
-atty = "0.2.14"
+argh = "0.1"
+atty = "0.2"
 
 [dependencies.serde]
 version = "1"
