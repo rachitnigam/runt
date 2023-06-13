@@ -70,7 +70,7 @@ fn read_path(path: &str) -> Result<PathBuf, String> {
 }
 
 /// Possible values for the --only flag.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum OnlyOpt {
     /// Failing tests.
     Fail,
