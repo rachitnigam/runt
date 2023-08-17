@@ -85,9 +85,9 @@ impl Test {
     /// std library fs::* and command::* so that there is a 1-to-1
     /// correspondence between tokio threads and spawned processes.
     /// This lets us control the number of parallel running processes.
-    pub async fn execute_test(self) -> Result<results::Test, RuntError> {
+    pub async fn execute_test(self, ignore_skip: bool) -> Result<results::Test, RuntError> {
         let skip_path = self.skip_file();
-        if skip_path.exists() {
+        if skip_path.exists() && !ignore_skip {
             return Ok(results::Test {
                 path: self.path,
                 expect_path: skip_path,

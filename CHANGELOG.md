@@ -1,6 +1,10 @@
 Runt Changelog
 ==============
 
+Unreleased
+-----
+- Add `--ignore-skip` to run tests with a `.skip` file
+
 0.4.0
 -----
 
