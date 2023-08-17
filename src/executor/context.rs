@@ -22,8 +22,9 @@ impl Executor {
     /// completion)
     pub fn execute_all(
         self,
+        ignore_skip: bool,
     ) -> impl stream::Stream<Item = Result<results::Test, RuntError>> {
-        stream::iter(self.tests.into_iter().map(|test| test.execute_test()))
+        stream::iter(self.tests.into_iter().map(move |test| test.execute_test(ignore_skip)))
             .buffer_unordered(self.max_futures)
     }
 }
@@ -176,7 +177,7 @@ impl Context {
         opts: &cli::Opts,
     ) -> Result<i32, errors::RuntError> {
         let mut st = Status::new(self.exec.tests.len() as u64);
-        let mut tasks = self.exec.execute_all();
+        let mut tasks = self.exec.execute_all(opts.ignore_skip);
 
         // Initial summary printing to give user feedback that runt has started.
         st.stream_summary().await?;

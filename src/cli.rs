@@ -33,6 +33,10 @@ pub struct Opts {
     #[argh(switch, short = 'v')]
     pub verbose: bool,
 
+    /// also run tests which are normally skipped with .skip files
+    #[argh(switch)]
+    pub ignore_skip: bool,
+
     /// filter out the reported test results based on test status
     /// ("pass", "fail", "miss") or a regex for the test file path.
     /// Applied after running the tests.
